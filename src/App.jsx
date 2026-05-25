@@ -2673,26 +2673,28 @@ export default function App() {
                 <thead>
                   <tr className="bg-[#0a0a0a] border-b-2 border-[#222]">
                     <th style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-30 transition-all duration-300">
-                      <div style={{ width: visualColWidth }} className="bg-[#0a0a0a] border-r border-[#222] min-h-full h-full relative z-30 shadow-[5px_0_15px_rgba(0,0,0,0.5)] transition-all duration-300 overflow-hidden">
-                        <div className={`p-3 md:p-5 font-black uppercase text-xs text-[#888] w-full h-full flex items-center ${isLeftColCollapsed ? 'justify-center' : 'justify-between'}`}>
-                          {!isLeftColCollapsed && <span className="truncate pr-2">Estrategia</span>}
-                          {!isLeftColCollapsed && (
-                            <div className="flex items-center gap-1.5 shrink-0 relative z-50">
-                              <button onClick={(e) => { e.stopPropagation(); setColWidth(w => w > baseColWidth ? baseColWidth : Math.min(window.innerWidth - 60, 400)); }} className="p-1.5 md:hidden bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333] flex items-center gap-1 text-[10px]">
-                                {colWidth > baseColWidth ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+                      <div style={{ width: physicalColWidth }} className="h-full relative">
+                        <div style={{ width: visualColWidth }} className="bg-[#0a0a0a] border-r border-[#222] absolute top-0 left-0 bottom-0 z-30 shadow-[5px_0_15px_rgba(0,0,0,0.5)] transition-all duration-300 overflow-hidden">
+                          <div className={`p-3 md:p-5 font-black uppercase text-xs text-[#888] w-full h-full flex items-center ${isLeftColCollapsed ? 'justify-center' : 'justify-between'}`}>
+                            {!isLeftColCollapsed && <span className="truncate pr-2">Estrategia</span>}
+                            {!isLeftColCollapsed && (
+                              <div className="flex items-center gap-1.5 shrink-0 relative z-50">
+                                <button onClick={(e) => { e.stopPropagation(); setColWidth(w => w > baseColWidth ? baseColWidth : Math.min(window.innerWidth - 60, 400)); }} className="p-1.5 md:hidden bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333] flex items-center gap-1 text-[10px]">
+                                  {colWidth > baseColWidth ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+                                </button>
+                                <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333]">
+                                  <ChevronLeft className="w-3 h-3 md:w-4 md:h-4" />
+                                </button>
+                              </div>
+                            )}
+                            {isLeftColCollapsed && (
+                              <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333] relative z-50">
+                                <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
                               </button>
-                              <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333]">
-                                <ChevronLeft className="w-3 h-3 md:w-4 md:h-4" />
-                              </button>
-                            </div>
-                          )}
-                          {isLeftColCollapsed && (
-                            <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333] relative z-50">
-                              <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
-                            </button>
-                          )}
+                            )}
+                          </div>
+                          {!isLeftColCollapsed && <div onMouseDown={handleResizeStart} className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500 z-50 transition-colors"></div>}
                         </div>
-                        {!isLeftColCollapsed && <div onMouseDown={handleResizeStart} className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500 z-50 transition-colors"></div>}
                       </div>
                     </th>
                     {visibleDaysArray.map(d => {
@@ -2730,8 +2732,9 @@ export default function App() {
                       className="border-b border-[#222] hover:bg-[#1a1a1a] transition-colors group cursor-grab active:cursor-grabbing focus:outline-none">
 
                       <td style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-20 transition-all duration-300 relative group">
-                        <div style={{ width: visualColWidth }} className="bg-[#111] group-hover:bg-[#1a1a1a] transition-all duration-300 h-full min-h-full border-r border-[#222] shadow-[5px_0_15px_rgba(0,0,0,0.5)] overflow-hidden relative">
-                          <div className={`flex items-center gap-2 md:gap-3 p-2 md:p-4 w-full h-full relative ${isLeftColCollapsed ? 'justify-center' : ''}`}>
+                        <div style={{ width: physicalColWidth }} className="h-full relative">
+                          <div style={{ width: visualColWidth }} className="bg-[#111] group-hover:bg-[#1a1a1a] transition-all duration-300 absolute top-0 left-0 bottom-0 border-r border-[#222] shadow-[5px_0_15px_rgba(0,0,0,0.5)] overflow-hidden">
+                            <div className={`flex items-center gap-2 md:gap-3 p-2 md:p-4 w-full h-full relative ${isLeftColCollapsed ? 'justify-center' : ''}`}>
                           <GripVertical className="w-4 h-4 md:w-5 md:h-5 text-[#444] group-hover:text-blue-500 cursor-grab shrink-0" />
                           <span className="text-[10px] font-black text-blue-400 bg-blue-950/80 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md border border-blue-800/50 shadow-[0_0_8px_rgba(59,130,246,0.2)] shrink-0">
                             {index + 1}
@@ -2846,8 +2849,10 @@ export default function App() {
                   ))}
                   <tr className="bg-black border-t-2 border-[#333]">
                     <td style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-20 transition-all duration-300">
-                      <div style={{ width: visualColWidth }} className="p-4 bg-black h-full min-h-full font-black uppercase text-xs text-right tracking-widest text-blue-500 shadow-[5px_0_15px_rgba(0,0,0,0.5)] border-r border-[#222] overflow-hidden transition-all duration-300">
-                        Indicador de Victoria
+                      <div style={{ width: physicalColWidth }} className="h-full relative">
+                        <div style={{ width: visualColWidth }} className="p-4 bg-black absolute top-0 left-0 bottom-0 font-black uppercase text-xs text-right tracking-widest text-blue-500 shadow-[5px_0_15px_rgba(0,0,0,0.5)] border-r border-[#222] overflow-hidden transition-all duration-300">
+                          Indicador de Victoria
+                        </div>
                       </div>
                     </td>
                     {visibleDaysArray.map(d => {
