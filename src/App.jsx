@@ -2707,7 +2707,8 @@ export default function App() {
                       onDragOver={(e) => handleDragOver(e, index)} onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, index)}
                       onDragEnd={handleDragEnd}
-                      className="border-b border-[#222] hover:bg-[#1a1a1a] transition-colors group cursor-grab active:cursor-grabbing">
+                      tabIndex="0"
+                      className="border-b border-[#222] hover:bg-[#1a1a1a] transition-colors group cursor-grab active:cursor-grabbing focus:outline-none">
 
                       <td style={{ width: actualColWidth, minWidth: actualColWidth, maxWidth: actualColWidth }} className="p-0 sticky left-0 bg-[#111] group-hover:bg-[#1a1a1a] transition-all duration-300 z-20 border-r border-[#222] shadow-xl relative overflow-hidden">
                         <div className={`flex items-center gap-2 md:gap-3 p-2 md:p-4 w-full h-full relative ${isLeftColCollapsed ? 'justify-center' : ''}`}>
@@ -2762,7 +2763,7 @@ export default function App() {
                                 </div>
                               </div>
 
-                              <div className="flex items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-[#111] p-1 rounded-lg border border-[#333] absolute right-2 top-1/2 -translate-y-1/2 shadow-lg z-50">
+                              <div className="flex items-center opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus:opacity-100 group-focus:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity bg-[#111] p-1 rounded-lg border border-[#333] absolute right-2 top-1/2 -translate-y-1/2 shadow-lg z-50">
                                 <button onClick={() => {
                                   setModalDate({ month: selectedMonthIndex, year: selectedYear });
                                   setEditingTask({ category: matrixMode, task: item });
@@ -3042,7 +3043,7 @@ export default function App() {
                           </div>
                         ) : (
                           config.monthlyGoals.filter(g => g.category === cat.id && g.monthIndex === selectedMonthIndex && (goalFilter === 'all' || g.status === goalFilter)).map(goal => (
-                            <div key={goal.id} className={`p-4 rounded-xl relative group border transition-all duration-300 ${goal.status === 'failed' ? 'bg-red-950/30 border-red-900/50' :
+                            <div key={goal.id} tabIndex="0" className={`p-4 rounded-xl relative group border transition-all duration-300 focus:outline-none ${goal.status === 'failed' ? 'bg-red-950/30 border-red-900/50' :
                               goal.status === 'achieved' ? `border-[${cat.accent}]/30 bg-[${cat.accent}]/5` :
                                 goal.status === 'achieved_early' ? 'bg-yellow-950/30 border-yellow-900/50' :
                                   'bg-[#111] border-[#222] hover:border-[#333]'
@@ -3052,7 +3053,7 @@ export default function App() {
                                 <span className={`font-bold text-sm pr-4 leading-snug ${goal.status === 'failed' ? 'text-red-400/70 line-through' :
                                   'text-white'
                                   }`}>{goal.title}</span>
-                                <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
+                                <div className="flex items-center gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus:opacity-100 group-focus:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-all">
                                   <button onClick={() => setLongTermGoalModal({ show: true, type: 'monthly', goal: { ...goal } })} className="text-[#333] hover:text-blue-400 transition-all mt-0.5">
                                     <Settings className="w-3.5 h-3.5" />
                                   </button>
@@ -3311,7 +3312,7 @@ export default function App() {
                           </div>
                         ) : (
                           config.yearlyGoals.filter(g => g.category === cat.id && g.yearIndex === selectedYear && (goalFilter === 'all' || g.status === goalFilter)).map(goal => (
-                            <div key={goal.id} className={`p-4 rounded-xl relative group border transition-all duration-300 ${goal.status === 'failed' ? 'bg-red-950/30 border-red-900/50' :
+                            <div key={goal.id} tabIndex="0" className={`p-4 rounded-xl relative group border transition-all duration-300 focus:outline-none ${goal.status === 'failed' ? 'bg-red-950/30 border-red-900/50' :
                               goal.status === 'achieved' || goal.status === 'achieved_early' ? 'bg-[#0f1a12] border-emerald-900/40' :
                                 'bg-[#111] border-[#222] hover:border-[#333]'
                               }`}>
@@ -3319,7 +3320,7 @@ export default function App() {
                               <div className="flex justify-between items-start mb-2">
                                 <span className={`font-black text-base pr-4 leading-snug ${goal.status === 'failed' ? 'text-red-400/70 line-through' : 'text-white'
                                   }`}>{goal.title}</span>
-                                <div className="flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
+                                <div className="flex items-center gap-1.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus:opacity-100 group-focus:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-all">
                                   <button onClick={() => setLongTermGoalModal({ show: true, type: 'yearly', goal: { ...goal } })} className="text-[#333] hover:text-blue-400 transition-all">
                                     <Settings className="w-4 h-4" />
                                   </button>
