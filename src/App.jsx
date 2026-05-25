@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from 'firebase/firestore';
@@ -755,7 +755,7 @@ export default function App() {
 
   // Mantener los checklists estáticos (visualmente) cuando se amplía/reduce la columna
   const prevActualColWidth = useRef(actualColWidth);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (tableScrollRef.current && actualColWidth !== prevActualColWidth.current) {
       const delta = actualColWidth - prevActualColWidth.current;
       tableScrollRef.current.scrollLeft += delta;
