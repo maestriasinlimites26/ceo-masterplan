@@ -1890,7 +1890,7 @@ export default function App() {
       let sessionData = null;
 
       // Verificamos si es ADMIN (El CEO)
-      if (userEmail === 'cliverdair25@gmail.com' || userEmail === 'cliverdair@gmail.com') {
+      if (userEmail === 'cliverdair25@gmail.com' || userEmail === 'cliverdair@gmail.com' || userEmail === 'maestriasinlimites16@gmail.com') {
         sessionData = { isLoggedIn: true, role: 'admin', email: userEmail, name: userName, uid: 'admin_dair' };
       } else {
         // Si no es admin, verificamos en allowedUsers
