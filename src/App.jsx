@@ -2762,7 +2762,7 @@ export default function App() {
                                 </div>
                               </div>
 
-                              <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity bg-[#111] p-1 rounded-lg border border-[#333] absolute right-2 top-1/2 -translate-y-1/2 shadow-lg z-50">
+                              <div className="flex items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-[#111] p-1 rounded-lg border border-[#333] absolute right-2 top-1/2 -translate-y-1/2 shadow-lg z-50">
                                 <button onClick={() => {
                                   setModalDate({ month: selectedMonthIndex, year: selectedYear });
                                   setEditingTask({ category: matrixMode, task: item });
