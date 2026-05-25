@@ -1,0 +1,133 @@
+﻿    // --- VISTA: PAPELERA MAESTRA ---
+    const renderPapelera = () => {
+       const deletedWorkTasks = (config.workTasks || []).filter(t => t.status === 'archived').map(t => ({...t, _type: 'workTasks'}));
+       const deletedHabits = (config.habits || []).filter(t => t.status === 'archived').map(t => ({...t, _type: 'habits'}));
+       const deletedMaintenance = (config.maintenanceTasks || []).filter(t => t.status === 'archived').map(t => ({...t, _type: 'maintenanceTasks'}));
+       const deletedMonthlyGoals = (config.monthlyGoals || []).filter(g => g.status === 'deleted').map(g => ({...g, _type: 'monthlyGoals'}));
+       const deletedYearlyGoals = (config.yearlyGoals || []).filter(g => g.status === 'deleted').map(g => ({...g, _type: 'yearlyGoals'}));
+       const deletedImages = (config.images || []).filter(i => typeof i === 'object' && i.deleted).map(i => ({...i, _type: 'images'}));
+       
+       const dMonthlyOverrides = Object.entries(config.monthlyDefaultOverrides || {}).filter(([k,v]) => v.deleted).map(([k,v]) => ({...v, id: k, _type: 'monthlyDefaultOverrides'}));
+       const dYearlyOverrides = Object.entries(config.yearlyDefaultOverrides || {}).filter(([k,v]) => v.deleted).map(([k,v]) => ({...v, id: k, _type: 'yearlyDefaultOverrides'}));
+       const dMonthlyCustom = (config.monthlyCustomCategories || []).filter(c => c.deleted).map(c => ({...c, _type: 'monthlyCustomCategories'}));
+       const dYearlyCustom = (config.yearlyCustomCategories || []).filter(c => c.deleted).map(c => ({...c, _type: 'yearlyCustomCategories'}));
+       
+       const dMotives = (config.deletedMotives || []).map(m => ({...m, _type: 'motives'}));
+
+       const allDeleted = [...deletedWorkTasks, ...deletedHabits, ...deletedMaintenance, ...deletedMonthlyGoals, ...deletedYearlyGoals, ...deletedImages, ...dMonthlyOverrides, ...dYearlyOverrides, ...dMonthlyCustom, ...dYearlyCustom, ...dMotives];
+       allDeleted.sort((a,b) => (b.deletedAt || 0) - (a.deletedAt || 0));
+
+       const handleRestore = (item) => {
+          if (['workTasks', 'habits', 'maintenanceTasks', 'monthlyGoals', 'yearlyGoals', 'monthlyCustomCategories', 'yearlyCustomCategories'].includes(item._type)) {
+             const arr = config[item._type].map(x => {
+                if (x.id === item.id) {
+                   const { _type, deleted, deletedAt, ...rest } = x;
+                   if (item._type.includes('Goals')) rest.status = 'active';
+                   else if (item._type.includes('CustomCategories')) {
+                       // remove deleted property completely
+                   }
+                   else rest.status = 'active';
+                   return rest;
+                }
+                return x;
+             });
+             if (item._type.includes('CustomCategories')) {
+                const fix = config[item._type].map(x => x.id === item.id ? { ...x, deleted: false, deletedAt: null } : x);
+                setConfig({...config, [item._type]: fix}); saveConfig({...config, [item._type]: fix});
+             } else {
+                setConfig({...config, [item._type]: arr}); saveConfig({...config, [item._type]: arr});
+             }
+          } else if (item._type === 'images') {
+             const arr = config.images.map(i => typeof i === 'object' && i.id === item.id ? i.src : i);
+             setConfig({...config, images: arr}); saveConfig({...config, images: arr});
+          } else if (['monthlyDefaultOverrides', 'yearlyDefaultOverrides'].includes(item._type)) {
+             const overrides = { ...config[item._type] };
+             if (overrides[item.id]) overrides[item.id].deleted = false;
+             setConfig({...config, [item._type]: overrides}); saveConfig({...config, [item._type]: overrides});
+          } else if (item._type === 'motives') {
+             // Restaurar un motor es complejo si ya hay uno activo, pero podemos simplemente ponerlo en el activo y quitarlo de eliminados
+             const newArr = config.deletedMotives.filter(m => m.id !== item.id);
+             setConfig({...config, deletedMotives: newArr, motives: { q1: item.q1, q2: item.q2, q3: item.q3 }, motivesLocked: true });
+             saveConfig({...config, deletedMotives: newArr, motives: { q1: item.q1, q2: item.q2, q3: item.q3 }, motivesLocked: true });
+          }
+       };
+
+       const handleDestroy = (item) => {
+          if (['workTasks', 'habits', 'maintenanceTasks', 'monthlyGoals', 'yearlyGoals', 'monthlyCustomCategories', 'yearlyCustomCategories'].includes(item._type)) {
+             const arr = config[item._type].filter(x => x.id !== item.id);
+             setConfig({...config, [item._type]: arr}); saveConfig({...config, [item._type]: arr});
+          } else if (item._type === 'images') {
+             const arr = config.images.filter(i => !(typeof i === 'object' && i.id === item.id));
+             setConfig({...config, images: arr}); saveConfig({...config, images: arr});
+          } else if (['monthlyDefaultOverrides', 'yearlyDefaultOverrides'].includes(item._type)) {
+             const overrides = { ...config[item._type] };
+             delete overrides[item.id];
+             setConfig({...config, [item._type]: overrides}); saveConfig({...config, [item._type]: overrides});
+          } else if (item._type === 'motives') {
+             const arr = config.deletedMotives.filter(m => m.id !== item.id);
+             setConfig({...config, deletedMotives: arr}); saveConfig({...config, deletedMotives: arr});
+          }
+       };
+
+       const formatItemName = (item) => {
+          if (item._type === 'motives') return Motor: "";
+          if (item._type === 'images') return "Imagen del Vision Board";
+          return item.name || item.title || item.goal || "Elemento Sin Nombre";
+       };
+
+       const getTypeLabel = (type) => {
+          if (type === 'workTasks') return 'Negocios';
+          if (type === 'habits') return 'Hábitos';
+          if (type === 'maintenanceTasks') return 'Mantenimiento';
+          if (type === 'monthlyGoals') return 'Meta Mensual';
+          if (type === 'yearlyGoals') return 'Meta Anual';
+          if (type.includes('Categories') || type.includes('Overrides')) return 'Pilar / Categoría';
+          if (type === 'images') return 'Imagen Vision Board';
+          if (type === 'motives') return 'Motor Psicológico';
+          return type;
+       };
+
+       return (
+        <div className="max-w-[1200px] mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-500">
+           <div className="text-center mb-10 mt-6">
+            <h2 className="text-4xl md:text-6xl font-black text-red-500 uppercase tracking-tighter drop-shadow-md flex items-center justify-center gap-4">
+              <Trash2 className="w-12 h-12" /> Papelera de Operaciones
+            </h2>
+            <p className="text-red-400 text-xs md:text-sm font-black uppercase tracking-widest mt-4 bg-red-900/10 inline-block px-5 py-2 rounded-full border border-red-500/20 shadow-inner">
+              "Todo lo que se elimina aquí desaparece permanentemente después de 30 días."
+            </p>
+           </div>
+           
+           <div className="bg-[#050505] p-6 rounded-3xl border border-[#222] shadow-2xl min-h-[50vh]">
+              {allDeleted.length === 0 ? (
+                 <div className="py-20 text-center text-[#555] font-black uppercase tracking-widest">
+                    La papelera está completamente vacía
+                 </div>
+              ) : (
+                 <div className="space-y-4">
+                    {allDeleted.map(t => (
+                       <div key={t.id || Math.random()} className="bg-[#0a0a0a] border border-[#222] p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl">
+                           <div className="flex items-center gap-4 overflow-hidden w-full">
+                              {t._type === 'images' && (
+                                 <img src={t.src} alt="Eliminada" className="w-16 h-16 object-cover rounded-xl grayscale opacity-70" />
+                              )}
+                              <div className="overflow-hidden">
+                                <h4 className="text-white font-black text-lg md:text-xl truncate">{formatItemName(t)}</h4>
+                                <div className="flex gap-2 items-center mt-1">
+                                   <span className="text-[#666] text-[10px] uppercase font-bold bg-[#111] px-2 py-1 rounded-md">{getTypeLabel(t._type)}</span>
+                                   <span className="text-[#444] text-[9px] uppercase font-bold">Eliminado: {t.deletedAt ? new Date(t.deletedAt).toLocaleDateString() : 'Desconocido'}</span>
+                                </div>
+                              </div>
+                           </div>
+                           <div className="flex gap-3 shrink-0 w-full md:w-auto mt-2 md:mt-0">
+                              <button onClick={() => handleRestore(t)} className="flex-1 md:flex-none px-6 py-3 bg-[#111] hover:bg-emerald-600 text-emerald-500 hover:text-white rounded-xl font-black text-xs uppercase transition-all flex items-center justify-center gap-2 border border-[#222] hover:border-emerald-500 shadow-lg"><RefreshCcw className="w-4 h-4"/> Restaurar</button>
+                              <button onClick={() => handleDestroy(t)} className="flex-1 md:flex-none px-6 py-3 bg-red-900/10 hover:bg-red-600 text-red-500 hover:text-white rounded-xl font-black text-xs uppercase transition-all flex items-center justify-center gap-2 border border-red-900/30 hover:border-red-500 shadow-lg"><X className="w-4 h-4"/> Destruir</button>
+                           </div>
+                       </div>
+                    ))}
+                 </div>
+              )}
+           </div>
+        </div>
+       );
+    };

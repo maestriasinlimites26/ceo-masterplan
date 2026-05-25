@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .premium-pulse {
+    animation: premiumPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes premiumPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* --- MODO CLARO INTELIGENTE --- */
+/* Invertimos el color y rotamos el tono para mantener los colores de acento similares */
+html[data-theme='light'] {
+  filter: invert(1) hue-rotate(180deg);
+  background: #F8F9FA;
+}
+
+/* Evitamos que las imágenes, emojis y avatares se inviertan */
+html[data-theme='light'] img,
+html[data-theme='light'] video,
+html[data-theme='light'] .emoji,
+html[data-theme='light'] svg,
+html[data-theme='light'] [data-no-invert="true"] {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Ajustes finos para que los modales oscuros no se vean blancos puros que lastimen la vista, 
+   el invert(1) hará que el #0A0F1C (casi negro) se vuelva casi blanco. 
+   El background en HTML ya cubre el fondo general. */
+body {
+  min-height: 100vh;
+}
+
+/* === SCROLLBAR PREMIUM: Grueso y fácil de agarrar === */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #0a0f1a;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #0a0f1a;
+  border-radius: 999px;
+  margin: 0 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+  border-radius: 999px;
+  border: 2px solid #0a0f1a;
+  transition: background 0.2s;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+}
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Grab cursor visual feedback */
+.drag-scroll-active {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.drag-magnetic-up td {
+  box-shadow: inset 0 4px 0 #3b82f6, inset 0 20px 20px -20px rgba(59, 130, 246, 0.5) !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  transition: all 0.1s ease-out;
+}
+.drag-magnetic-down td {
+  box-shadow: inset 0 -4px 0 #3b82f6, inset 0 -20px 20px -20px rgba(59, 130, 246, 0.5) !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  transition: all 0.1s ease-out;
+}
