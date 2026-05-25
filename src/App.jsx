@@ -2416,14 +2416,14 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="group/motives mt-2 w-max">
+              <div className="group/motives mt-2 w-max" tabIndex="0">
                 <div className="flex items-center justify-center md:justify-start gap-2 bg-black border border-[#333] rounded-lg px-3 py-1.5 cursor-pointer group-hover/motives:border-blue-500 transition-colors">
                   <Lock className="w-3.5 h-3.5 text-green-500" />
                   <p className="text-gray-300 text-[10px] font-black tracking-widest uppercase">Tus Motores Intocables</p>
                   <ChevronDown className="w-3 h-3 text-[#555] group-hover/motives:text-blue-400" />
                 </div>
 
-                <div className="absolute top-full left-1/2 -translate-x-1/2 md:translate-x-0 md:left-0 mt-2 w-80 md:w-96 bg-[#0A0F1C] border border-[#1E293B] rounded-2xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9)] opacity-0 invisible group-hover/motives:opacity-100 group-hover/motives:visible transition-all duration-300 z-[999]">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 md:translate-x-0 md:left-0 mt-2 w-80 md:w-96 bg-[#0A0F1C] border border-[#1E293B] rounded-2xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9)] opacity-0 invisible group-hover/motives:opacity-100 group-hover/motives:visible group-focus/motives:opacity-100 group-focus/motives:visible transition-all duration-300 z-[999] focus-within:opacity-100 focus-within:visible">
                   <h4 className="text-blue-500 text-xs font-black uppercase tracking-widest mb-5 border-b border-[#1E293B] pb-3 flex items-center justify-center md:justify-start gap-2">
                     <Shield className="w-4 h-4" /> Configuración Blindada
                   </h4>
@@ -2544,7 +2544,7 @@ export default function App() {
                   <div key={`img1-${index}`} className="h-64 md:h-80 w-max shrink-0 relative bg-[#02040A] border border-[#1E293B] rounded-2xl overflow-hidden group shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
                     <div className="absolute inset-0 border border-white/5 rounded-2xl z-10 pointer-events-none"></div>
                     <img src={img} className="h-full w-auto min-w-[250px] object-contain transition-all duration-1000 group-hover:scale-105 group-hover:blur-[4px] opacity-90 group-hover:opacity-30" />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 p-6 gap-3">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 bg-black/50 lg:bg-transparent transition-all duration-300 z-20 p-6 gap-3">
                       <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openImageModal(index); }} className="w-full bg-blue-600/80 hover:bg-blue-500 text-white border border-blue-400 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(59,130,246,0.6)] transform translate-y-4 group-hover:translate-y-0 transition-all">
                         Modificar Visión
                       </button>
@@ -2560,7 +2560,7 @@ export default function App() {
                   <div key={`img2-${index}`} className="h-64 md:h-80 w-max shrink-0 relative bg-[#02040A] border border-[#1E293B] rounded-2xl overflow-hidden group shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
                     <div className="absolute inset-0 border border-white/5 rounded-2xl z-10 pointer-events-none"></div>
                     <img src={img} className="h-full w-auto min-w-[250px] object-contain transition-all duration-1000 group-hover:scale-105 group-hover:blur-[4px] opacity-90 group-hover:opacity-30" />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 p-6 gap-3">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 bg-black/50 lg:bg-transparent transition-all duration-300 z-20 p-6 gap-3">
                       <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openImageModal(index); }} className="w-full bg-blue-600/80 hover:bg-blue-500 text-white border border-blue-400 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(59,130,246,0.6)] transform translate-y-4 group-hover:translate-y-0 transition-all">
                         Modificar Visión
                       </button>
@@ -3052,7 +3052,7 @@ export default function App() {
                                 <span className={`font-bold text-sm pr-4 leading-snug ${goal.status === 'failed' ? 'text-red-400/70 line-through' :
                                   'text-white'
                                   }`}>{goal.title}</span>
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
                                   <button onClick={() => setLongTermGoalModal({ show: true, type: 'monthly', goal: { ...goal } })} className="text-[#333] hover:text-blue-400 transition-all mt-0.5">
                                     <Settings className="w-3.5 h-3.5" />
                                   </button>
@@ -3319,7 +3319,7 @@ export default function App() {
                               <div className="flex justify-between items-start mb-2">
                                 <span className={`font-black text-base pr-4 leading-snug ${goal.status === 'failed' ? 'text-red-400/70 line-through' : 'text-white'
                                   }`}>{goal.title}</span>
-                                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                                <div className="flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
                                   <button onClick={() => setLongTermGoalModal({ show: true, type: 'yearly', goal: { ...goal } })} className="text-[#333] hover:text-blue-400 transition-all">
                                     <Settings className="w-4 h-4" />
                                   </button>
