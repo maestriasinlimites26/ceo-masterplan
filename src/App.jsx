@@ -650,6 +650,7 @@ export default function App() {
   const baseColWidth = isMobile ? 160 : 250;
   const [colWidth, setColWidth] = useState(baseColWidth);
   const [isLeftColCollapsed, setIsLeftColCollapsed] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
   const physicalColWidth = isLeftColCollapsed ? 65 : baseColWidth;
   const visualColWidth = isLeftColCollapsed ? 65 : colWidth;
 
@@ -742,10 +743,12 @@ export default function App() {
 
   const handleResizeStart = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
     const startX = e.clientX;
     const startWidth = colWidth;
     const doDrag = (dragEvent) => setColWidth(Math.max(200, Math.min(800, startWidth + dragEvent.clientX - startX)));
-    const stopDrag = () => { document.removeEventListener('mousemove', doDrag); document.removeEventListener('mouseup', stopDrag); };
+    const stopDrag = () => { setIsResizing(false); document.removeEventListener('mousemove', doDrag); document.removeEventListener('mouseup', stopDrag); };
     document.addEventListener('mousemove', doDrag);
     document.addEventListener('mouseup', stopDrag);
   };
@@ -2674,7 +2677,7 @@ export default function App() {
                   <tr className="bg-[#0a0a0a] border-b-2 border-[#222]">
                     <th style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-30 transition-all duration-300">
                       <div style={{ width: physicalColWidth }} className="h-full relative">
-                        <div style={{ width: visualColWidth }} className="bg-[#0a0a0a] border-r border-[#222] absolute top-0 left-0 bottom-0 z-30 shadow-[5px_0_15px_rgba(0,0,0,0.5)] transition-all duration-300 overflow-hidden">
+                        <div style={{ width: visualColWidth }} className={`bg-[#0a0a0a] border-r border-[#222] absolute top-0 left-0 bottom-0 z-30 shadow-[5px_0_15px_rgba(0,0,0,0.5)] overflow-hidden ${isResizing ? '' : 'transition-all duration-300'}`}>
                           <div className={`p-3 md:p-5 font-black uppercase text-xs text-[#888] w-full h-full flex items-center ${isLeftColCollapsed ? 'justify-center' : 'justify-between'}`}>
                             {!isLeftColCollapsed && <span className="truncate pr-2">Estrategia</span>}
                             {!isLeftColCollapsed && (
@@ -2693,7 +2696,11 @@ export default function App() {
                               </button>
                             )}
                           </div>
-                          {!isLeftColCollapsed && <div onMouseDown={handleResizeStart} className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500 z-50 transition-colors"></div>}
+                          {!isLeftColCollapsed && (
+                            <div onMouseDown={handleResizeStart} onTouchStart={handleResizeStart} className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize flex items-center justify-center z-50 group/resizer">
+                              <div className={`w-1.5 h-12 rounded-full transition-colors ${isResizing ? 'bg-blue-500' : 'bg-[#333] group-hover/resizer:bg-blue-400'}`}></div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </th>
@@ -2733,7 +2740,7 @@ export default function App() {
 
                       <td style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-20 transition-all duration-300 relative group">
                         <div style={{ width: physicalColWidth }} className="h-full relative">
-                          <div style={{ width: visualColWidth }} className="bg-[#111] group-hover:bg-[#1a1a1a] transition-all duration-300 absolute top-0 left-0 bottom-0 border-r border-[#222] shadow-[5px_0_15px_rgba(0,0,0,0.5)] overflow-hidden">
+                          <div style={{ width: visualColWidth }} className={`bg-[#111] group-hover:bg-[#1a1a1a] absolute top-0 left-0 bottom-0 border-r border-[#222] shadow-[5px_0_15px_rgba(0,0,0,0.5)] overflow-hidden ${isResizing ? '' : 'transition-all duration-300'}`}>
                             <div className={`flex items-center gap-2 md:gap-3 p-2 md:p-4 w-full h-full relative ${isLeftColCollapsed ? 'justify-center' : ''}`}>
                           <GripVertical className="w-4 h-4 md:w-5 md:h-5 text-[#444] group-hover:text-blue-500 cursor-grab shrink-0" />
                           <span className="text-[10px] font-black text-blue-400 bg-blue-950/80 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md border border-blue-800/50 shadow-[0_0_8px_rgba(59,130,246,0.2)] shrink-0">
@@ -2850,7 +2857,7 @@ export default function App() {
                   <tr className="bg-black border-t-2 border-[#333]">
                     <td style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-20 transition-all duration-300">
                       <div style={{ width: physicalColWidth }} className="h-full relative">
-                        <div style={{ width: visualColWidth }} className="p-4 bg-black absolute top-0 left-0 bottom-0 font-black uppercase text-xs text-right tracking-widest text-blue-500 shadow-[5px_0_15px_rgba(0,0,0,0.5)] border-r border-[#222] overflow-hidden transition-all duration-300">
+                        <div style={{ width: visualColWidth }} className={`p-4 bg-black absolute top-0 left-0 bottom-0 font-black uppercase text-xs text-right tracking-widest text-blue-500 shadow-[5px_0_15px_rgba(0,0,0,0.5)] border-r border-[#222] overflow-hidden ${isResizing ? '' : 'transition-all duration-300'}`}>
                           Indicador de Victoria
                         </div>
                       </div>
