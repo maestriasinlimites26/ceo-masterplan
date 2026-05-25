@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from 'firebase/firestore';
@@ -646,9 +646,12 @@ export default function App() {
   const [matrixMode, setMatrixMode] = useState('workTasks');
   const [taskStatusFilter, setTaskStatusFilter] = useState('active');
 
-  const [colWidth, setColWidth] = useState(window.innerWidth < 768 ? 160 : 320);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const baseColWidth = isMobile ? 160 : 250;
+  const [colWidth, setColWidth] = useState(baseColWidth);
   const [isLeftColCollapsed, setIsLeftColCollapsed] = useState(false);
-  const actualColWidth = isLeftColCollapsed ? 65 : colWidth;
+  const physicalColWidth = isLeftColCollapsed ? 65 : baseColWidth;
+  const visualColWidth = isLeftColCollapsed ? 65 : colWidth;
 
   const [bottomQuoteTick, setBottomQuoteTick] = useState(0);
 
@@ -753,15 +756,7 @@ export default function App() {
   const tableDragStartX = useRef(0);
   const tableDragging = useRef(false);
 
-  // Mantener los checklists estáticos (visualmente) cuando se amplía/reduce la columna
-  const prevActualColWidth = useRef(actualColWidth);
-  useLayoutEffect(() => {
-    if (tableScrollRef.current && actualColWidth !== prevActualColWidth.current) {
-      const delta = actualColWidth - prevActualColWidth.current;
-      tableScrollRef.current.scrollLeft += delta;
-      prevActualColWidth.current = actualColWidth;
-    }
-  }, [actualColWidth]);
+  // El scrollLeft automático ya no es necesario porque usamos physicalColWidth fijo
 
   const handleTableMouseDown = (e) => {
     // Disable drag-to-scroll over the checklist rows so it doesn't conflict with sortable drag-and-drop
@@ -2677,26 +2672,28 @@ export default function App() {
               <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="bg-[#0a0a0a] border-b-2 border-[#222]">
-                    <th style={{ width: actualColWidth, minWidth: actualColWidth, maxWidth: actualColWidth }} className="p-0 sticky left-0 bg-[#0a0a0a] z-30 border-r border-[#222] relative group transition-all duration-300">
-                      <div className={`p-3 md:p-5 font-black uppercase text-xs text-[#888] w-full h-full flex items-center ${isLeftColCollapsed ? 'justify-center' : 'justify-between'}`}>
-                        {!isLeftColCollapsed && <span className="truncate pr-2">Estrategia</span>}
-                        {!isLeftColCollapsed && (
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button onClick={(e) => { e.stopPropagation(); setColWidth(w => w > 200 ? 160 : Math.min(window.innerWidth - 60, 400)); }} className="p-1.5 md:hidden bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333] flex items-center gap-1 text-[10px]">
-                              {colWidth > 200 ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+                    <th style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-30 transition-all duration-300">
+                      <div style={{ width: visualColWidth }} className="bg-[#0a0a0a] border-r border-[#222] min-h-full h-full relative z-30 shadow-[5px_0_15px_rgba(0,0,0,0.5)] transition-all duration-300 overflow-hidden">
+                        <div className={`p-3 md:p-5 font-black uppercase text-xs text-[#888] w-full h-full flex items-center ${isLeftColCollapsed ? 'justify-center' : 'justify-between'}`}>
+                          {!isLeftColCollapsed && <span className="truncate pr-2">Estrategia</span>}
+                          {!isLeftColCollapsed && (
+                            <div className="flex items-center gap-1.5 shrink-0 relative z-50">
+                              <button onClick={(e) => { e.stopPropagation(); setColWidth(w => w > baseColWidth ? baseColWidth : Math.min(window.innerWidth - 60, 400)); }} className="p-1.5 md:hidden bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333] flex items-center gap-1 text-[10px]">
+                                {colWidth > baseColWidth ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+                              </button>
+                              <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333]">
+                                <ChevronLeft className="w-3 h-3 md:w-4 md:h-4" />
+                              </button>
+                            </div>
+                          )}
+                          {isLeftColCollapsed && (
+                            <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333] relative z-50">
+                              <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
                             </button>
-                            <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333]">
-                              <ChevronLeft className="w-3 h-3 md:w-4 md:h-4" />
-                            </button>
-                          </div>
-                        )}
-                        {isLeftColCollapsed && (
-                          <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333]">
-                            <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
-                          </button>
-                        )}
+                          )}
+                        </div>
+                        {!isLeftColCollapsed && <div onMouseDown={handleResizeStart} className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500 z-50 transition-colors"></div>}
                       </div>
-                      {!isLeftColCollapsed && <div onMouseDown={handleResizeStart} className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500 z-40 transition-colors"></div>}
                     </th>
                     {visibleDaysArray.map(d => {
                       const isSun = d.dayIndex === 0;
@@ -2732,8 +2729,9 @@ export default function App() {
                       tabIndex="0"
                       className="border-b border-[#222] hover:bg-[#1a1a1a] transition-colors group cursor-grab active:cursor-grabbing focus:outline-none">
 
-                      <td style={{ width: actualColWidth, minWidth: actualColWidth, maxWidth: actualColWidth }} className="p-0 sticky left-0 bg-[#111] group-hover:bg-[#1a1a1a] transition-all duration-300 z-20 border-r border-[#222] shadow-xl relative overflow-hidden">
-                        <div className={`flex items-center gap-2 md:gap-3 p-2 md:p-4 w-full h-full relative ${isLeftColCollapsed ? 'justify-center' : ''}`}>
+                      <td style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-20 transition-all duration-300 relative group">
+                        <div style={{ width: visualColWidth }} className="bg-[#111] group-hover:bg-[#1a1a1a] transition-all duration-300 h-full min-h-full border-r border-[#222] shadow-[5px_0_15px_rgba(0,0,0,0.5)] overflow-hidden relative">
+                          <div className={`flex items-center gap-2 md:gap-3 p-2 md:p-4 w-full h-full relative ${isLeftColCollapsed ? 'justify-center' : ''}`}>
                           <GripVertical className="w-4 h-4 md:w-5 md:h-5 text-[#444] group-hover:text-blue-500 cursor-grab shrink-0" />
                           <span className="text-[10px] font-black text-blue-400 bg-blue-950/80 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md border border-blue-800/50 shadow-[0_0_8px_rgba(59,130,246,0.2)] shrink-0">
                             {index + 1}
@@ -2847,7 +2845,11 @@ export default function App() {
                     </tr>
                   ))}
                   <tr className="bg-black border-t-2 border-[#333]">
-                    <td style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }} className="p-4 sticky left-0 bg-black z-20 font-black uppercase text-xs text-right tracking-widest text-blue-500 shadow-xl border-r border-[#222]">Indicador de Victoria</td>
+                    <td style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-20 transition-all duration-300">
+                      <div style={{ width: visualColWidth }} className="p-4 bg-black h-full min-h-full font-black uppercase text-xs text-right tracking-widest text-blue-500 shadow-[5px_0_15px_rgba(0,0,0,0.5)] border-r border-[#222] overflow-hidden transition-all duration-300">
+                        Indicador de Victoria
+                      </div>
+                    </td>
                     {visibleDaysArray.map(d => {
                       const isSun = d.dayIndex === 0;
                       const isPastDay = d.dateStr < actualTodayStr;
