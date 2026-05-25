@@ -2692,7 +2692,7 @@ export default function App() {
               <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="bg-[#0a0a0a] border-b-2 border-[#222]">
-                    <th style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-30 transition-all duration-300">
+                    <th style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-30 transition-all duration-300 h-[1px]">
                       <div style={{ width: physicalColWidth }} className="h-full relative">
                         <div style={{ width: visualColWidth }} className={`bg-[#0a0a0a] border-r border-[#222] absolute top-0 left-0 bottom-0 z-30 shadow-[5px_0_15px_rgba(0,0,0,0.5)] overflow-hidden ${isResizing ? '' : 'transition-all duration-300'}`}>
                           <div className={`p-3 md:p-5 font-black uppercase text-xs text-[#888] w-full h-full flex items-center ${isLeftColCollapsed ? 'justify-center' : 'justify-between'}`}>
@@ -2755,7 +2755,7 @@ export default function App() {
                       tabIndex="0"
                       className="border-b border-[#222] hover:bg-[#1a1a1a] transition-colors group cursor-grab active:cursor-grabbing focus:outline-none">
 
-                      <td style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-20 transition-all duration-300 relative group">
+                      <td style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-20 transition-all duration-300 relative group h-[1px]">
                         <div style={{ width: physicalColWidth }} className="h-full relative">
                           <div style={{ width: visualColWidth }} className={`bg-[#111] group-hover:bg-[#1a1a1a] absolute top-0 left-0 bottom-0 border-r border-[#222] shadow-[5px_0_15px_rgba(0,0,0,0.5)] overflow-hidden ${isResizing ? '' : 'transition-all duration-300'}`}>
                             <div className={`flex items-center gap-2 md:gap-3 p-2 md:p-4 w-full h-full relative ${isLeftColCollapsed ? 'justify-center' : ''}`}>
@@ -2874,7 +2874,7 @@ export default function App() {
                     </tr>
                   ))}
                   <tr className="bg-black border-t-2 border-[#333]">
-                    <td style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-20 transition-all duration-300">
+                    <td style={{ width: physicalColWidth, minWidth: physicalColWidth, maxWidth: physicalColWidth }} className="p-0 sticky left-0 z-20 transition-all duration-300 h-[1px]">
                       <div style={{ width: physicalColWidth }} className="h-full relative">
                         <div style={{ width: visualColWidth }} className={`p-4 bg-black absolute top-0 left-0 bottom-0 font-black uppercase text-xs text-right tracking-widest text-blue-500 shadow-[5px_0_15px_rgba(0,0,0,0.5)] border-r border-[#222] overflow-hidden ${isResizing ? '' : 'transition-all duration-300'}`}>
                           Indicador de Victoria
