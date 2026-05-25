@@ -753,6 +753,16 @@ export default function App() {
   const tableDragStartX = useRef(0);
   const tableDragging = useRef(false);
 
+  // Mantener los checklists estáticos (visualmente) cuando se amplía/reduce la columna
+  const prevActualColWidth = useRef(actualColWidth);
+  useEffect(() => {
+    if (tableScrollRef.current && actualColWidth !== prevActualColWidth.current) {
+      const delta = actualColWidth - prevActualColWidth.current;
+      tableScrollRef.current.scrollLeft += delta;
+      prevActualColWidth.current = actualColWidth;
+    }
+  }, [actualColWidth]);
+
   const handleTableMouseDown = (e) => {
     // Disable drag-to-scroll over the checklist rows so it doesn't conflict with sortable drag-and-drop
     if (e.target.closest('tbody')) return;
