@@ -742,15 +742,32 @@ export default function App() {
   }, [goalImageModal.show]);
 
   const handleResizeStart = (e) => {
-    e.preventDefault();
+    // We cannot reliably call preventDefault on passive touch events, but touchAction: none handles it via CSS.
+    // However, preventDefault stops mouse events from highlighting text.
+    if (!e.touches) e.preventDefault(); 
     e.stopPropagation();
     setIsResizing(true);
-    const startX = e.clientX;
+    
+    const startX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
     const startWidth = colWidth;
-    const doDrag = (dragEvent) => setColWidth(Math.max(200, Math.min(800, startWidth + dragEvent.clientX - startX)));
-    const stopDrag = () => { setIsResizing(false); document.removeEventListener('mousemove', doDrag); document.removeEventListener('mouseup', stopDrag); };
+    
+    const doDrag = (dragEvent) => {
+      const currentX = dragEvent.touches && dragEvent.touches.length > 0 ? dragEvent.touches[0].clientX : dragEvent.clientX;
+      setColWidth(Math.max(200, Math.min(800, startWidth + currentX - startX)));
+    };
+    
+    const stopDrag = () => { 
+      setIsResizing(false); 
+      document.removeEventListener('mousemove', doDrag); 
+      document.removeEventListener('mouseup', stopDrag); 
+      document.removeEventListener('touchmove', doDrag);
+      document.removeEventListener('touchend', stopDrag);
+    };
+    
     document.addEventListener('mousemove', doDrag);
     document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchmove', doDrag, { passive: false });
+    document.addEventListener('touchend', stopDrag);
   };
 
   // --- DRAG-TO-SCROLL en la tabla (global document) ---
@@ -2697,7 +2714,7 @@ export default function App() {
                             )}
                           </div>
                           {!isLeftColCollapsed && (
-                            <div onMouseDown={handleResizeStart} onTouchStart={handleResizeStart} className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize flex items-center justify-center z-50 group/resizer">
+                            <div onMouseDown={handleResizeStart} onTouchStart={handleResizeStart} className="absolute right-0 top-0 bottom-0 w-8 cursor-col-resize flex items-center justify-center z-50 group/resizer" style={{ touchAction: 'none' }}>
                               <div className={`w-1.5 h-12 rounded-full transition-colors ${isResizing ? 'bg-blue-500' : 'bg-[#333] group-hover/resizer:bg-blue-400'}`}></div>
                             </div>
                           )}
