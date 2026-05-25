@@ -2768,17 +2768,11 @@ export default function App() {
                             <>
                               <div onClick={() => handleTaskPowerToggle(item)} className={`cursor-pointer rounded-full p-1.5 border transition-all shrink-0 ${item.status === 'archived' ? 'bg-[#222] text-[#666]' : 'bg-green-900/30 text-green-500 hover:text-red-500'}`}><Power className="w-3 h-3 md:w-4 md:h-4" /></div>
 
-                              <div className="flex flex-col min-w-0 flex-1 relative justify-center pr-2 md:pr-24">
+                              <div className="flex flex-col min-w-0 flex-1 relative justify-center">
                                 <div className="relative group/name w-full flex-1 min-w-0">
-                                  <span className={`text-xs md:text-sm font-black truncate cursor-help w-full block ${item.status === 'archived' ? 'line-through opacity-40 italic' : 'text-white'}`}>
+                                  <span title={item.name} className={`text-xs md:text-sm font-black truncate w-full block ${item.status === 'archived' ? 'line-through opacity-40 italic' : 'text-white'}`}>
                                     {item.name}
                                   </span>
-                                  <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 opacity-0 invisible group-hover/name:opacity-100 group-hover/name:visible transition-all duration-300 transform scale-95 group-hover/name:scale-100 z-[9999] pointer-events-none">
-                                    <div className="bg-gradient-to-br from-[#0A0F1C] to-[#02040A] border border-blue-500/50 text-white text-sm md:text-base font-black py-2.5 px-5 rounded-xl shadow-[0_15px_30px_rgba(59,130,246,0.5)] w-max max-w-[300px] md:max-w-[400px] whitespace-normal leading-relaxed flex items-center gap-3">
-                                      <Activity className="w-5 h-5 text-blue-400 shrink-0" />
-                                      <span>{item.name}</span>
-                                    </div>
-                                  </div>
                                 </div>
 
                                 <div className="relative group/time mt-1 md:mt-1.5 w-max shrink-0">
