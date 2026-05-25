@@ -2822,6 +2822,8 @@ export default function App() {
                             </>
                           )}
                         </div>
+                          </div>
+                        </div>
                       </td>
 
                       {visibleDaysArray.map(d => {
