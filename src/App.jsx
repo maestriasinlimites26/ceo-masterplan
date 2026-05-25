@@ -2541,10 +2541,10 @@ export default function App() {
             <div className="flex w-max animate-marquee-images hover:[animation-play-state:paused]">
               <div className="flex gap-6 pr-6">
                 {displayImages.map((img, index) => (
-                  <div key={`img1-${index}`} className="h-64 md:h-80 w-max shrink-0 relative bg-[#02040A] border border-[#1E293B] rounded-2xl overflow-hidden group shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+                  <div key={`img1-${index}`} tabIndex="0" className="h-64 md:h-80 w-max shrink-0 relative bg-[#02040A] border border-[#1E293B] rounded-2xl overflow-hidden group shadow-[0_10px_30px_rgba(0,0,0,0.8)] focus:outline-none">
                     <div className="absolute inset-0 border border-white/5 rounded-2xl z-10 pointer-events-none"></div>
-                    <img src={img} className="h-full w-auto min-w-[250px] object-contain transition-all duration-1000 group-hover:scale-105 group-hover:blur-[4px] opacity-90 group-hover:opacity-30" />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 bg-black/50 lg:bg-transparent transition-all duration-300 z-20 p-6 gap-3">
+                    <img src={img} className="h-full w-auto min-w-[250px] object-contain transition-all duration-1000 group-hover:scale-105 group-focus:scale-105 group-hover:blur-[4px] group-focus:blur-[4px] opacity-90 group-hover:opacity-30 group-focus:opacity-30" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 group-focus:opacity-100 bg-black/50 transition-all duration-300 z-20 p-6 gap-3">
                       <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openImageModal(index); }} className="w-full bg-blue-600/80 hover:bg-blue-500 text-white border border-blue-400 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(59,130,246,0.6)] transform translate-y-4 group-hover:translate-y-0 transition-all">
                         Modificar Visión
                       </button>
@@ -2557,10 +2557,10 @@ export default function App() {
               </div>
               <div className="flex gap-6 pr-6">
                 {displayImages.map((img, index) => (
-                  <div key={`img2-${index}`} className="h-64 md:h-80 w-max shrink-0 relative bg-[#02040A] border border-[#1E293B] rounded-2xl overflow-hidden group shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+                  <div key={`img2-${index}`} tabIndex="0" className="h-64 md:h-80 w-max shrink-0 relative bg-[#02040A] border border-[#1E293B] rounded-2xl overflow-hidden group shadow-[0_10px_30px_rgba(0,0,0,0.8)] focus:outline-none">
                     <div className="absolute inset-0 border border-white/5 rounded-2xl z-10 pointer-events-none"></div>
-                    <img src={img} className="h-full w-auto min-w-[250px] object-contain transition-all duration-1000 group-hover:scale-105 group-hover:blur-[4px] opacity-90 group-hover:opacity-30" />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 bg-black/50 lg:bg-transparent transition-all duration-300 z-20 p-6 gap-3">
+                    <img src={img} className="h-full w-auto min-w-[250px] object-contain transition-all duration-1000 group-hover:scale-105 group-focus:scale-105 group-hover:blur-[4px] group-focus:blur-[4px] opacity-90 group-hover:opacity-30 group-focus:opacity-30" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 group-focus:opacity-100 bg-black/50 transition-all duration-300 z-20 p-6 gap-3">
                       <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openImageModal(index); }} className="w-full bg-blue-600/80 hover:bg-blue-500 text-white border border-blue-400 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(59,130,246,0.6)] transform translate-y-4 group-hover:translate-y-0 transition-all">
                         Modificar Visión
                       </button>
