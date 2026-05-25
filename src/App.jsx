@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from 'firebase/firestore';
-import { Crown, CheckSquare, Square, Target, Briefcase, Plus, Trash2, RefreshCcw, ImagePlus, Flame, ChevronRight, ChevronLeft, Medal, X, Clock, Calendar as CalendarIcon, Settings, AlertTriangle, Zap, Play, Lock, User, Mail, Users, Filter, BarChart2, Unlock, Heart, ShieldAlert, Archive, PauseCircle, Trophy, MoreVertical, CalendarX, Scissors, Activity, GripVertical, Diamond, CalendarDays, Power, Award, Rocket, Shield, Star, Gem, Hexagon, Octagon, Sparkles, ChevronDown, Crosshair, Radar, Plane, Home, TrendingUp, Dumbbell, Map, Compass, SlidersHorizontal, Search, CloudUpload, Check, Moon, Sun } from 'lucide-react';
+import { Crown, CheckSquare, Square, Target, Briefcase, Plus, Trash2, RefreshCcw, ImagePlus, Flame, ChevronRight, ChevronLeft, Medal, X, Clock, Calendar as CalendarIcon, Settings, AlertTriangle, Zap, Play, Lock, User, Mail, Users, Filter, BarChart2, Unlock, Heart, ShieldAlert, Archive, PauseCircle, Trophy, MoreVertical, CalendarX, Scissors, Activity, GripVertical, Diamond, CalendarDays, Power, Award, Rocket, Shield, Star, Gem, Hexagon, Octagon, Sparkles, ChevronDown, Crosshair, Radar, Plane, Home, TrendingUp, Dumbbell, Map, Compass, SlidersHorizontal, Search, CloudUpload, Check, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -2669,10 +2669,22 @@ export default function App() {
                   <tr className="bg-[#0a0a0a] border-b-2 border-[#222]">
                     <th style={{ width: actualColWidth, minWidth: actualColWidth, maxWidth: actualColWidth }} className="p-0 sticky left-0 bg-[#0a0a0a] z-30 border-r border-[#222] relative group transition-all duration-300">
                       <div className={`p-3 md:p-5 font-black uppercase text-xs text-[#888] w-full h-full flex items-center ${isLeftColCollapsed ? 'justify-center' : 'justify-between'}`}>
-                        {!isLeftColCollapsed && <span>Estrategia</span>}
-                        <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333]">
-                          {isLeftColCollapsed ? <ChevronRight className="w-3 h-3 md:w-4 md:h-4" /> : <ChevronLeft className="w-3 h-3 md:w-4 md:h-4" />}
-                        </button>
+                        {!isLeftColCollapsed && <span className="truncate pr-2">Estrategia</span>}
+                        {!isLeftColCollapsed && (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button onClick={(e) => { e.stopPropagation(); setColWidth(w => w > 200 ? 160 : Math.min(window.innerWidth - 60, 400)); }} className="p-1.5 md:hidden bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333] flex items-center gap-1 text-[10px]">
+                              {colWidth > 200 ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+                            </button>
+                            <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333]">
+                              <ChevronLeft className="w-3 h-3 md:w-4 md:h-4" />
+                            </button>
+                          </div>
+                        )}
+                        {isLeftColCollapsed && (
+                          <button onClick={() => setIsLeftColCollapsed(!isLeftColCollapsed)} className="p-1.5 md:p-2 bg-[#1a1a1a] hover:bg-blue-600 hover:text-white transition-colors rounded-lg border border-[#333]">
+                            <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
+                          </button>
+                        )}
                       </div>
                       {!isLeftColCollapsed && <div onMouseDown={handleResizeStart} className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500 z-40 transition-colors"></div>}
                     </th>
