@@ -995,8 +995,16 @@ export default function App() {
           } else {
             setSession(data);
             if (!session.isLoggedIn) {
-              setLoginSuccessMsg(`¡QUÉ ALEGRÍA VOLVER A VERTE, ${data.name.toUpperCase()}! AQUÍ ESTÁN LOS QUE NO SE RINDEN.`);
-              setTimeout(() => setLoginSuccessMsg(''), 5000);
+              const happyMessages = [
+                `¡QUÉ ALEGRÍA VOLVER A VERTE, ${data.name.toUpperCase()}! AQUÍ ESTÁN LOS QUE NO SE RINDEN.`,
+                `EL MUNDO ES DE LOS DISCIPLINADOS, ${data.name.toUpperCase()}. ¡A CONQUISTAR EL DÍA!`,
+                `CADA DÍA ES UNA OPORTUNIDAD, ${data.name.toUpperCase()}. ¡HAZ QUE CUENTE!`,
+                `EL ÉXITO AMA LA VELOCIDAD, ${data.name.toUpperCase()}. ¡VAMOS CON TODO!`,
+                `TU VISIÓN TE ESPERA, ${data.name.toUpperCase()}. ¡A EJECUTAR EL PLAN!`,
+                `SIN EXCUSAS, ${data.name.toUpperCase()}. HOY CONSTRUIMOS TU IMPERIO.`
+              ];
+              setLoginSuccessMsg(happyMessages[Math.floor(Math.random() * happyMessages.length)]);
+              setTimeout(() => setLoginSuccessMsg(''), 6000);
             }
           }
         }
@@ -1919,17 +1927,45 @@ export default function App() {
         }
       }
 
+      const authLinkRef = doc(db, 'artifacts', appId, 'users', result.user.uid, 'settings', 'auth_link');
+      const snap = await getDoc(authLinkRef);
+      let previousLastLogin = 0;
+      if (snap.exists() && snap.data().lastLogin) {
+        previousLastLogin = snap.data().lastLogin;
+      }
+
       sessionData.lastLogin = Date.now();
       setSession(sessionData);
       localStorage.setItem('eliteSession', JSON.stringify(sessionData));
-      setDoc(doc(db, 'artifacts', appId, 'users', result.user.uid, 'settings', 'auth_link'), sessionData, { merge: true });
+      setDoc(authLinkRef, sessionData, { merge: true });
 
-      if (sessionData.role === 'admin') {
-        setLoginSuccessMsg('BIENVENIDO DE VUELTA, CEO.');
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      const isFirstTime = previousLastLogin === 0;
+      const daysSinceLastLogin = previousLastLogin > 0 ? (Date.now() - previousLastLogin) / (1000 * 60 * 60 * 24) : 0;
+
+      if (isFirstTime) {
+        setLoginSuccessMsg(`BIENVENIDO A TU NUEVA VIDA, ${sessionData.name.toUpperCase()}.`);
+      } else if (Date.now() - previousLastLogin > SEVEN_DAYS_MS) {
+        const painfulMessages = [
+          `EL TIEMPO NO PERDONA, ${sessionData.name.toUpperCase()}. ¿CUÁNTO MÁS VAS A POSPONER TU VIDA?`,
+          `${Math.floor(daysSinceLastLogin)} DÍAS PERDIDOS. TU COMPETENCIA LO APROVECHÓ. DESPIERTA, ${sessionData.name.toUpperCase()}.`,
+          `LA PROCRASTINACIÓN DESTRUYE IMPERIOS. ES HORA DE VOLVER A ENFOCARSE, ${sessionData.name.toUpperCase()}.`,
+          `SI TE RINDES AHORA, LO ANTERIOR NO VALIÓ NADA. RETOMA EL CONTROL, ${sessionData.name.toUpperCase()}.`,
+          `DUELE MÁS EL ARREPENTIMIENTO QUE LA DISCIPLINA. ¿QUÉ ELIGES HOY, ${sessionData.name.toUpperCase()}?`
+        ];
+        setLoginSuccessMsg(painfulMessages[Math.floor(Math.random() * painfulMessages.length)]);
       } else {
-        setLoginSuccessMsg(`ACCESO CONCEDIDO, ${sessionData.name.toUpperCase()}.`);
+        const happyMessages = [
+          `¡QUÉ ALEGRÍA VOLVER A VERTE, ${sessionData.name.toUpperCase()}! AQUÍ ESTÁN LOS QUE NO SE RINDEN.`,
+          `EL MUNDO ES DE LOS DISCIPLINADOS, ${sessionData.name.toUpperCase()}. ¡A CONQUISTAR EL DÍA!`,
+          `CADA DÍA ES UNA OPORTUNIDAD, ${sessionData.name.toUpperCase()}. ¡HAZ QUE CUENTE!`,
+          `EL ÉXITO AMA LA VELOCIDAD, ${sessionData.name.toUpperCase()}. ¡VAMOS CON TODO!`,
+          `TU VISIÓN TE ESPERA, ${sessionData.name.toUpperCase()}. ¡A EJECUTAR EL PLAN!`,
+          `SIN EXCUSAS, ${sessionData.name.toUpperCase()}. HOY CONSTRUIMOS TU IMPERIO.`
+        ];
+        setLoginSuccessMsg(happyMessages[Math.floor(Math.random() * happyMessages.length)]);
       }
-      setTimeout(() => setLoginSuccessMsg(''), 4000);
+      setTimeout(() => setLoginSuccessMsg(''), 7000);
 
     } catch (error) {
       console.error(error);
