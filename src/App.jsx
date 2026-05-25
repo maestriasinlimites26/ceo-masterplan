@@ -986,7 +986,19 @@ export default function App() {
       const authLinkRef = doc(db, 'artifacts', appId, 'users', firebaseUser.uid, 'settings', 'auth_link');
       const unsub = onSnapshot(authLinkRef, (snap) => {
         if (snap.exists() && snap.data().isLoggedIn) {
-          setSession(snap.data());
+          const data = snap.data();
+          const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+          if (data.lastLogin && (Date.now() - data.lastLogin > SEVEN_DAYS_MS)) {
+            auth.signOut();
+            setSession({ isLoggedIn: false });
+            localStorage.removeItem('eliteSession');
+          } else {
+            setSession(data);
+            if (!session.isLoggedIn) {
+              setLoginSuccessMsg(`¡QUÉ ALEGRÍA VOLVER A VERTE, ${data.name.toUpperCase()}! AQUÍ ESTÁN LOS QUE NO SE RINDEN.`);
+              setTimeout(() => setLoginSuccessMsg(''), 5000);
+            }
+          }
         }
         setIsAuthChecking(false);
       }, (error) => {
@@ -1910,6 +1922,7 @@ export default function App() {
       sessionData.lastLogin = Date.now();
       setSession(sessionData);
       localStorage.setItem('eliteSession', JSON.stringify(sessionData));
+      setDoc(doc(db, 'artifacts', appId, 'users', result.user.uid, 'settings', 'auth_link'), sessionData, { merge: true });
 
       if (sessionData.role === 'admin') {
         setLoginSuccessMsg('BIENVENIDO DE VUELTA, CEO.');
