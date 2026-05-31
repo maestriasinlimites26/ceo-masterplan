@@ -1697,6 +1697,7 @@ export default function App() {
   };
 
   const isTaskScheduledOnDay = (task, dayData, exceptions) => {
+    if (task.status === 'deleted') return false;
     if (!task.activeMonths.includes(dayData.monthIndex)) return false;
     if (!task.isFlexible && (!task.startTime || !task.endTime)) return false;
     if (exceptions[`${dayData.monthIndex}_${task.id}_${dayData.date}`]) return false;
@@ -1800,6 +1801,7 @@ export default function App() {
 
   const isDayInBaseSchedule = (task, dayData) => {
     if (!task || !dayData) return false;
+    if (task.status === 'deleted') return false;
     if (!task.activeMonths?.includes(dayData.monthIndex)) return false;
     if (!task.isFlexible && (!task.startTime || !task.endTime)) return false;
     if (task.taskType === 'specific') return (task.specificDates || []).includes(dayData.dateStr);
@@ -2891,6 +2893,9 @@ export default function App() {
         <button onClick={() => setAppMode('yearly_plan')} className={`flex-1 w-full md:w-auto py-5 px-6 rounded-2xl font-black uppercase text-sm tracking-widest transition-all duration-500 flex items-center justify-center gap-3 border-2 ${appMode === 'yearly_plan' ? 'bg-purple-600/20 text-purple-400 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)] scale-105' : 'bg-[#0a0a0a] text-[#555] border-[#222] hover:bg-[#111] hover:text-white'}`}>
           <Compass className="w-5 h-5" /> Imperio Anual
         </button>
+        <button onClick={() => setAppMode('trash')} className={`flex-1 w-full md:w-auto py-5 px-6 rounded-2xl font-black uppercase text-sm tracking-widest transition-all duration-500 flex items-center justify-center gap-3 border-2 ${appMode === 'trash' ? 'bg-red-600/20 text-red-400 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)] scale-105' : 'bg-[#0a0a0a] text-[#555] border-[#222] hover:bg-[#111] hover:text-white'}`}>
+          <Trash2 className="w-5 h-5" /> Papelera de Operaciones
+        </button>
       </div>
 
       {/* --- VISTA: MATRIZ DIARIA --- */}
@@ -3776,6 +3781,13 @@ export default function App() {
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {/* --- VISTA: PAPELERA DE OPERACIONES --- */}
+      {appMode === 'trash' && (
+        <div className="max-w-[1800px] mx-auto mt-6 mb-12 animate-in fade-in slide-in-from-bottom-10 duration-500">
+          {renderPapelera()}
         </div>
       )}
 
