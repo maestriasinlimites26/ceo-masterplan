@@ -771,6 +771,33 @@ export default function App() {
     }
   }, [goalPsychoModal.show]);
 
+  // Reproductor de sonido de aviso / alerta
+  useEffect(() => {
+    if (
+      taskDeleteModal.show ||
+      advancedDeleteModal.show ||
+      deleteCatModal.show ||
+      goalPsychoModal.show ||
+      (failureModal && failureModal.show) ||
+      showPsychologicalModal ||
+      guestToDelete
+    ) {
+      const audioLocal = new Audio("/sonido_de_error.mp3");
+      audioLocal.play().catch(() => {
+        const audioAbsolute = new Audio("file:///C:/Users/clive/Downloads/sonido%20de%20error.mp3");
+        audioAbsolute.play().catch(err => console.warn("No se pudo reproducir el sonido de error:", err));
+      });
+    }
+  }, [
+    taskDeleteModal.show,
+    advancedDeleteModal.show,
+    deleteCatModal.show,
+    goalPsychoModal.show,
+    failureModal?.show,
+    showPsychologicalModal,
+    guestToDelete
+  ]);
+
   // Auto-click de input de archivo cuando se solicita agregar imagen a meta
   useEffect(() => {
     if (goalImageModal.show && goalFileInputRef.current) {
@@ -1219,6 +1246,47 @@ export default function App() {
   }, [config.monthlyGoals, config.yearlyGoals, isConfigLoaded, session.isLoggedIn, actualTodayStr]);
   // ----------------------------------------------------
 
+  // --- NUEVO: AUTO-ACTUALIZADOR DE EXPIRACIÓN PARA TAREAS Y HÁBITOS ---
+  const isTaskExpired = (task, todayStr) => {
+    if (task.status === 'archived' || task.status === 'deleted') return false;
+    if (task.taskType === 'specific') {
+      if (!task.specificDates || task.specificDates.length === 0) return false;
+      return task.specificDates.every(d => d < todayStr);
+    }
+    if (task.endDate) {
+      return task.endDate < todayStr;
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    if (!isConfigLoaded || !session.isLoggedIn) return;
+
+    let needsUpdate = false;
+    const updatedWorkTasks = (config.workTasks || []).map(t => {
+      if (t.status === 'active' && isTaskExpired(t, actualTodayStr)) {
+        needsUpdate = true;
+        return { ...t, status: 'archived', endDate: t.endDate || actualTodayStr };
+      }
+      return t;
+    });
+
+    const updatedHabits = (config.habits || []).map(h => {
+      if (h.status === 'active' && isTaskExpired(h, actualTodayStr)) {
+        needsUpdate = true;
+        return { ...h, status: 'archived', endDate: h.endDate || actualTodayStr };
+      }
+      return h;
+    });
+
+    if (needsUpdate) {
+      const newConf = { ...config, workTasks: updatedWorkTasks, habits: updatedHabits };
+      setConfig(newConf);
+      saveConfig(newConf);
+    }
+  }, [config.workTasks, config.habits, isConfigLoaded, session.isLoggedIn, actualTodayStr]);
+  // --------------------------------------------------------------------
+
   const isPendingOnboarding = session.isLoggedIn && isConfigLoaded && (!config.motivesLocked || (session.role === 'guest' && !config.tutorialSeen));
 
   const handleNextOnboardingStep = () => {
@@ -1639,7 +1707,7 @@ export default function App() {
 
     // Función táctica para verificar si una tarea realmente está operando en un día exacto, respetando si fue liberada
     const isTaskActiveOnDate = (task, dateStr) => {
-      if (task.status === 'archived') return false;
+      if (task.status === 'archived' || task.status === 'deleted') return false;
       if (task.cancelledDays && task.cancelledDays.includes(dateStr)) return false; // Si el CEO liberó este día, NO ESTÁ ACTIVA.
 
       if (task.taskType === 'specific') {
@@ -1675,7 +1743,7 @@ export default function App() {
     const end1 = timeToMinutes(currentTask.endTime);
     if (start1 >= end1) return [];
     allTasks.forEach(t => {
-      if (t.id === currentTask.id || t.status === 'archived' || t.isFlexible) return;
+      if (t.id === currentTask.id || t.status === 'archived' || t.status === 'deleted' || t.isFlexible) return;
       const start2 = timeToMinutes(t.startTime);
       const end2 = timeToMinutes(t.endTime);
       if (start1 < end2 && end1 > start2 && checkDayOverlap(currentTask, t)) overlaps.push(t);
@@ -1687,7 +1755,7 @@ export default function App() {
   const checkSlotOverlap = (slotMins, currentTask, allTasks) => {
     if (currentTask.isFlexible) return false;
     return allTasks.some(t => {
-      if (t.id === currentTask.id || t.status === 'archived' || t.isFlexible) return false;
+      if (t.id === currentTask.id || t.status === 'archived' || t.status === 'deleted' || t.isFlexible) return false;
       const start2 = timeToMinutes(t.startTime);
       const end2 = timeToMinutes(t.endTime);
       if (!(slotMins < end2 && (slotMins + 30) > start2)) return false;
@@ -1704,7 +1772,7 @@ export default function App() {
     // Revisar colisión en la misma categoría (excluyendo la tarea actual)
     const sameCatTasks = currentCat === 'workTasks' ? allWorkTasks : allHabits;
     const sameHit = sameCatTasks.find(t => {
-      if (t.id === currentTask.id || t.status === 'archived' || t.isFlexible) return false;
+      if (t.id === currentTask.id || t.status === 'archived' || t.status === 'deleted' || t.isFlexible) return false;
       const s = timeToMinutes(t.startTime), e = timeToMinutes(t.endTime);
       if (!(slotMins < e && (slotMins + 30) > s)) return false;
       return checkDayOverlap(currentTask, t);
@@ -1716,7 +1784,7 @@ export default function App() {
     // Revisar colisión en la categoría opuesta
     const crossCatTasks = currentCat === 'workTasks' ? allHabits : allWorkTasks;
     const crossHit = crossCatTasks.find(t => {
-      if (t.status === 'archived' || t.isFlexible) return false;
+      if (t.status === 'archived' || t.status === 'deleted' || t.isFlexible) return false;
       const s = timeToMinutes(t.startTime), e = timeToMinutes(t.endTime);
       if (!(slotMins < e && (slotMins + 30) > s)) return false;
       return checkDayOverlap(currentTask, t);
@@ -1867,7 +1935,7 @@ export default function App() {
 
   const confirmDeleteTask = () => {
     if (!taskDeleteModal.task) return;
-    const newArray = config[taskDeleteModal.category].map(t => t.id === taskDeleteModal.task.id ? { ...t, status: 'archived', deletedAt: Date.now() } : t);
+    const newArray = config[taskDeleteModal.category].map(t => t.id === taskDeleteModal.task.id ? { ...t, status: 'deleted', deletedAt: Date.now() } : t);
     setConfig({ ...config, [taskDeleteModal.category]: newArray }); // Actualización instantánea
     saveConfig({ ...config, [taskDeleteModal.category]: newArray });
     setTaskDeleteModal({ show: false, task: null, category: '' });
@@ -2118,7 +2186,7 @@ export default function App() {
 
   const visibleDaysArray = getVisibleDays();
   const globalProgress = calculateProgress(config[matrixMode] || [], visibleDaysArray);
-  const visibleTasksFinal = (config[matrixMode] || []).filter(t => taskStatusFilter === 'all' || (taskStatusFilter === 'active' ? t.status !== 'archived' : t.status === 'archived'));
+  const visibleTasksFinal = (config[matrixMode] || []).filter(t => t.status !== 'deleted' && (taskStatusFilter === 'all' || (taskStatusFilter === 'active' ? t.status !== 'archived' : t.status === 'archived')));
 
   const navTitleText = useMemo(() => {
     if (viewScope === 'day') return `${visibleDaysArray[0]?.date} ${monthNames[selectedMonthIndex]}`;
@@ -2417,9 +2485,9 @@ export default function App() {
     : [];
   // --- VISTA: PAPELERA MAESTRA ---
   const renderPapelera = () => {
-    const deletedWorkTasks = (config.workTasks || []).filter(t => t.status === 'archived').map(t => ({ ...t, _type: 'workTasks' }));
-    const deletedHabits = (config.habits || []).filter(t => t.status === 'archived').map(t => ({ ...t, _type: 'habits' }));
-    const deletedMaintenance = (config.maintenanceTasks || []).filter(t => t.status === 'archived').map(t => ({ ...t, _type: 'maintenanceTasks' }));
+    const deletedWorkTasks = (config.workTasks || []).filter(t => t.status === 'deleted').map(t => ({ ...t, _type: 'workTasks' }));
+    const deletedHabits = (config.habits || []).filter(t => t.status === 'deleted').map(t => ({ ...t, _type: 'habits' }));
+    const deletedMaintenance = (config.maintenanceTasks || []).filter(t => t.status === 'deleted').map(t => ({ ...t, _type: 'maintenanceTasks' }));
     const deletedMonthlyGoals = (config.monthlyGoals || []).filter(g => g.status === 'deleted').map(g => ({ ...g, _type: 'monthlyGoals' }));
     const deletedYearlyGoals = (config.yearlyGoals || []).filter(g => g.status === 'deleted').map(g => ({ ...g, _type: 'yearlyGoals' }));
     const deletedImages = (config.images || []).filter(i => typeof i === 'object' && i.deleted).map(i => ({ ...i, _type: 'images' }));
@@ -2865,7 +2933,7 @@ export default function App() {
               <div className="flex bg-black border border-[#333] rounded-xl p-1 shadow-inner gap-2">
                 <button onClick={() => setTaskStatusFilter('all')} className={`px-5 py-2 rounded-lg font-black uppercase text-[10px] transition-all ${taskStatusFilter === 'all' ? 'bg-blue-500 text-white shadow-lg' : 'text-[#64748B] hover:text-white'}`}>Todas</button>
                 <button onClick={() => setTaskStatusFilter('active')} className={`px-5 py-2 rounded-lg font-black uppercase text-[10px] transition-all ${taskStatusFilter === 'active' ? 'bg-green-500 text-black shadow-lg' : 'text-[#64748B] hover:text-white'}`}>Activas</button>
-                <button onClick={() => setTaskStatusFilter('archived')} className={`px-5 py-2 rounded-lg font-black uppercase text-[10px] transition-all ${taskStatusFilter === 'archived' ? 'bg-red-500 text-white shadow-lg' : 'text-[#64748B] hover:text-white'}`}>Apagadas</button>
+                <button onClick={() => setTaskStatusFilter('archived')} className={`px-5 py-2 rounded-lg font-black uppercase text-[10px] transition-all ${taskStatusFilter === 'archived' ? 'bg-red-500 text-white shadow-lg' : 'text-[#64748B] hover:text-white'}`}>Apagadas / Culminadas</button>
               </div>
               <div className="flex bg-black border border-[#333] rounded-xl p-1 shadow-inner">
                 <button onClick={() => setMatrixMode('workTasks')} className={`px-8 py-3 rounded-lg font-black uppercase text-xs transition-all ${matrixMode === 'workTasks' ? 'bg-blue-600 text-white shadow-lg' : 'text-[#666] hover:text-white'}`}>Negocios</button>
@@ -2958,7 +3026,7 @@ export default function App() {
 
                           {!isLeftColCollapsed && (
                             <>
-                              <div onClick={() => handleTaskPowerToggle(item)} className={`cursor-pointer rounded-full p-1.5 border transition-all shrink-0 ${item.status === 'archived' ? 'bg-[#222] text-[#666]' : 'bg-green-900/30 text-green-500 hover:text-red-500'}`}><Power className="w-3 h-3 md:w-4 md:h-4" /></div>
+                              <div onClick={() => handleTaskPowerToggle(item)} title={item.status === 'archived' ? "Activar Operación" : "Apagar / Culminar Operación"} className={`cursor-pointer rounded-full p-1.5 border transition-all shrink-0 ${item.status === 'archived' ? 'bg-[#222] text-[#666]' : 'bg-green-900/30 text-green-500 hover:text-red-500'}`}><Power className="w-3 h-3 md:w-4 md:h-4" /></div>
 
                               <div className="flex flex-col min-w-0 flex-1 relative justify-center">
                                 <div className="relative group/name w-full flex-1 min-w-0">
@@ -4180,6 +4248,27 @@ export default function App() {
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 relative z-10">
+              <div>
+                <label className="text-[10px] text-[#64748B] uppercase font-black tracking-widest mb-2 block ml-1">Día de Inicio</label>
+                <input
+                  type="date"
+                  value={editingTask.task.startDate || actualTodayStr}
+                  onChange={e => setEditingTask({ ...editingTask, task: { ...editingTask.task, startDate: e.target.value } })}
+                  className="w-full bg-[#02040A] border border-[#1E293B] p-4 rounded-xl text-sm font-bold text-[#888] focus:text-white focus:border-blue-500 outline-none shadow-inner transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-[#64748B] uppercase font-black tracking-widest mb-2 block ml-1">Fecha de Culminación (Opcional)</label>
+                <input
+                  type="date"
+                  value={editingTask.task.endDate || ''}
+                  onChange={e => setEditingTask({ ...editingTask, task: { ...editingTask.task, endDate: e.target.value || null } })}
+                  className="w-full bg-[#02040A] border border-[#1E293B] p-4 rounded-xl text-sm font-bold text-[#888] focus:text-white focus:border-blue-500 outline-none shadow-inner transition-colors"
+                />
+              </div>
             </div>
 
             {!editingTask.task.isFlexible && radarTasks.length > 0 && (
