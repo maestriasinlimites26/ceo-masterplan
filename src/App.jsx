@@ -658,6 +658,7 @@ export default function App() {
   const [guestAddedMsg, setGuestAddedMsg] = useState('');
   const [guestToDelete, setGuestToDelete] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | saving | success
+  const [goalImages, setGoalImages] = useState({});
 
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileAliasInput, setProfileAliasInput] = useState('');
@@ -1073,11 +1074,35 @@ export default function App() {
   useEffect(() => {
     if (!firebaseUser || !session.isLoggedIn) return;
 
+    let latestGoalImages = {};
+
+    const goalImgRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_goal_images', session.uid);
+    const unsubGoalImgs = onSnapshot(goalImgRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        latestGoalImages = data.images || {};
+        setGoalImages(latestGoalImages);
+      } else {
+        latestGoalImages = {};
+        setGoalImages({});
+      }
+      setConfig(prev => {
+        if (!prev || !prev.monthlyGoals) return prev;
+        const mergedMonthly = (prev.monthlyGoals || []).map(g => ({ ...g, images: latestGoalImages[g.id] || [] }));
+        const mergedYearly = (prev.yearlyGoals || []).map(g => ({ ...g, images: latestGoalImages[g.id] || [] }));
+        return { ...prev, monthlyGoals: mergedMonthly, yearlyGoals: mergedYearly };
+      });
+    }, (error) => console.error("Error cargando imágenes de metas:", error));
+
     const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_configs', `${session.uid}_year_${selectedYear}`);
     const unsubConfig = onSnapshot(configRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setConfig(data);
+        const mergedMonthly = (data.monthlyGoals || []).map(g => ({ ...g, images: latestGoalImages[g.id] || [] }));
+        const mergedYearly = (data.yearlyGoals || []).map(g => ({ ...g, images: latestGoalImages[g.id] || [] }));
+        const mergedData = { ...data, monthlyGoals: mergedMonthly, yearlyGoals: mergedYearly };
+        
+        setConfig(mergedData);
         if (!data.motives) setConfig(prev => ({ ...prev, motives: { q1: '', q2: '', q3: '' } }));
         if (data.tutorialSeen === undefined) setConfig(prev => ({ ...prev, tutorialSeen: false }));
         if (!data.images) setConfig(prev => ({ ...prev, images: [] }));
@@ -1116,10 +1141,19 @@ export default function App() {
       }
     }, (error) => console.error("Error sincronizando progreso:", error));
 
-    return () => { unsubConfig(); unsubChecks(); };
+    return () => { unsubConfig(); unsubChecks(); unsubGoalImgs(); };
   }, [firebaseUser, session.isLoggedIn, selectedYear, session.uid]);
 
-  const saveConfig = async (newConfig) => { if (firebaseUser && session.isLoggedIn) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_configs', `${session.uid}_year_${selectedYear}`), newConfig, { merge: true }); };
+  const saveConfig = async (newConfig) => {
+    if (firebaseUser && session.isLoggedIn) {
+      const cleanConfig = {
+        ...newConfig,
+        monthlyGoals: (newConfig.monthlyGoals || []).map(({ images, ...rest }) => rest),
+        yearlyGoals: (newConfig.yearlyGoals || []).map(({ images, ...rest }) => rest),
+      };
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_configs', `${session.uid}_year_${selectedYear}`), cleanConfig, { merge: true });
+    }
+  };
   const saveChecksAndExceptions = async (newChecks, newExceptions) => { if (firebaseUser && session.isLoggedIn) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_checks', `${session.uid}_year_${selectedYear}`), { checks: newChecks, exceptions: newExceptions }, { merge: true }); };
 
   const handleForceSync = async () => {
@@ -1320,11 +1354,23 @@ export default function App() {
   };
 
   // --- LÓGICA PARA METAS A LARGO PLAZO ---
-  const handleSaveLongTermGoal = () => {
+  const handleSaveLongTermGoal = async () => {
     const targetArray = longTermGoalModal.type === 'monthly' ? 'monthlyGoals' : 'yearlyGoals';
     const isNew = !config[targetArray].some(g => g.id === longTermGoalModal.goal.id);
 
     if (!longTermGoalModal.goal.title.trim()) return;
+
+    // Guardamos las fotos en el documento separado para no colapsar el config
+    const goalImagesToSave = longTermGoalModal.goal.images || [];
+    const updatedGoalImages = { ...goalImages, [longTermGoalModal.goal.id]: goalImagesToSave };
+    setGoalImages(updatedGoalImages);
+    try {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_goal_images', session.uid), {
+        images: updatedGoalImages
+      }, { merge: true });
+    } catch (e) {
+      console.error("Error guardando imágenes del objetivo:", e);
+    }
 
     const updatedArray = isNew
       ? [...config[targetArray], longTermGoalModal.goal]
@@ -1352,9 +1398,22 @@ export default function App() {
     }
   };
 
-  const handleConfirmKillGoal = () => {
+  const handleConfirmKillGoal = async () => {
     const targetArray = goalPsychoModal.type === 'monthly' ? 'monthlyGoals' : 'yearlyGoals';
     const updatedArray = config[targetArray].filter(g => g.id !== goalPsychoModal.goalId);
+
+    // Eliminar imágenes de la base de datos de fotos de metas
+    const updatedGoalImages = { ...goalImages };
+    delete updatedGoalImages[goalPsychoModal.goalId];
+    setGoalImages(updatedGoalImages);
+    try {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_goal_images', session.uid), {
+        images: updatedGoalImages
+      }, { merge: true });
+    } catch (e) {
+      console.error("Error eliminando imágenes del objetivo:", e);
+    }
+
     const newConfig = { ...config, [targetArray]: updatedArray };
     setConfig(newConfig);
     saveConfig(newConfig);
@@ -1449,10 +1508,10 @@ export default function App() {
         const img = new Image();
         img.onload = async () => {
           const canvas = document.createElement('canvas');
-          const MAX = 900; const scale = Math.min(MAX / img.width, 1);
+          const MAX = 480; const scale = Math.min(MAX / img.width, 1);
           canvas.width = img.width * scale; canvas.height = img.height * scale;
           canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-          const base64 = canvas.toDataURL('image/jpeg', 0.75);
+          const base64 = canvas.toDataURL('image/jpeg', 0.65);
 
           setLongTermGoalModal(prev => {
             const imgs = prev.goal.images || [];
