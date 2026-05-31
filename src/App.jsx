@@ -1499,31 +1499,45 @@ export default function App() {
 
   // --- NUEVA FUNCIÓN: SUBIR IMAGEN A META ---
   const handleGoalImageUpload = async (e) => {
-    const file = e.target.files[0]; if (!file) return;
+    const files = Array.from(e.target.files || []); if (files.length === 0) return;
 
     // Solo permitimos carga dentro del modal de configuración (longTermGoalModal)
     if (longTermGoalModal.show && longTermGoalModal.goal) {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const img = new Image();
-        img.onload = async () => {
-          const canvas = document.createElement('canvas');
-          const MAX = 480; const scale = Math.min(MAX / img.width, 1);
-          canvas.width = img.width * scale; canvas.height = img.height * scale;
-          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-          const base64 = canvas.toDataURL('image/jpeg', 0.65);
+      const currentImgs = longTermGoalModal.goal.images || [];
+      const remainingSlots = 3 - currentImgs.length;
+      if (remainingSlots <= 0) return;
 
-          setLongTermGoalModal(prev => {
-            const imgs = prev.goal.images || [];
-            if (imgs.length >= 3) return prev;
-            return { ...prev, goal: { ...prev.goal, images: [...imgs, base64] } };
-          });
+      const filesToProcess = files.slice(0, remainingSlots);
+      const processedBase64s = [];
 
-          if (goalFileInputRef.current) goalFileInputRef.current.value = '';
-        };
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
+      for (const file of filesToProcess) {
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX = 480; const scale = Math.min(MAX / img.width, 1);
+              canvas.width = img.width * scale; canvas.height = img.height * scale;
+              canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL('image/jpeg', 0.65));
+            };
+            img.src = event.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+        processedBase64s.push(base64);
+      }
+
+      if (processedBase64s.length > 0) {
+        setLongTermGoalModal(prev => {
+          const imgs = prev.goal.images || [];
+          const newImgs = [...imgs, ...processedBase64s].slice(0, 3);
+          return { ...prev, goal: { ...prev.goal, images: newImgs } };
+        });
+      }
+
+      if (goalFileInputRef.current) goalFileInputRef.current.value = '';
     }
   };
 
@@ -2519,7 +2533,7 @@ export default function App() {
     <div className="min-h-screen bg-[#050505] text-gray-200 font-sans p-4 relative overflow-x-hidden">
 
       <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
-      <input type="file" accept="image/*" ref={goalFileInputRef} onChange={handleGoalImageUpload} className="hidden" />
+      <input type="file" accept="image/*" multiple ref={goalFileInputRef} onChange={handleGoalImageUpload} className="hidden" />
 
       {/* HEADER SUPREMO */}
       <header className="max-w-[1800px] mx-auto mb-6 flex flex-col md:flex-row items-center justify-between gap-4 bg-[#111] border border-[#222] p-6 pt-14 md:pt-6 rounded-3xl shadow-xl relative z-50 overflow-visible">
