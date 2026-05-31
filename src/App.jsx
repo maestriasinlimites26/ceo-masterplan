@@ -239,14 +239,14 @@ const goalExamplesByCategory = {
 
 const PERFECT_TIERS = [
   { icon: Crown, color: 'text-cyan-300', baseColor: 'text-cyan-300', hex: '#67E8F9', glow: 'rgba(103,232,249,1)', bg: 'bg-cyan-900/20 border border-cyan-500/50 shadow-[inset_0_0_20px_rgba(103,232,249,0.2)]', name: "LEYENDA DIAMANTE" },
-  { icon: Flame, color: 'text-orange-500', baseColor: 'text-orange-500', hex: '#f97316', glow: 'rgba(249,115,22,1)', bg: 'bg-orange-900/20 border border-orange-500/50 shadow-[inset_0_0_20px_rgba(249,115,22,0.2)]', name: "FUEGO INFERNAL" },
+  { icon: Flame, color: 'text-blue-500', baseColor: 'text-blue-500', hex: '#3b82f6', glow: 'rgba(59,130,246,1)', bg: 'bg-blue-900/20 border border-blue-500/50 shadow-[inset_0_0_20px_rgba(59,130,246,0.2)]', name: "LLAMA AZUL" },
   { icon: Diamond, color: 'text-purple-400', baseColor: 'text-purple-400', hex: '#c084fc', glow: 'rgba(192,132,252,1)', bg: 'bg-purple-900/20 border border-purple-500/50 shadow-[inset_0_0_20px_rgba(192,132,252,0.2)]', name: "IMPERIO ONIX" },
   { icon: Shield, color: 'text-emerald-400', baseColor: 'text-emerald-400', hex: '#34d399', glow: 'rgba(52,211,153,1)', bg: 'bg-emerald-900/20 border border-emerald-500/50 shadow-[inset_0_0_20px_rgba(52,211,153,0.2)]', name: "BLINDAJE TOTAL" },
   { icon: Zap, color: 'text-yellow-400', baseColor: 'text-yellow-400', hex: '#facc15', glow: 'rgba(250,204,21,1)', bg: 'bg-yellow-900/20 border border-yellow-500/50 shadow-[inset_0_0_20px_rgba(250,204,21,0.2)]', name: "ALTO VOLTAJE" },
-  { icon: Target, color: 'text-rose-500', baseColor: 'text-rose-500', hex: '#f43f5e', glow: 'rgba(244,63,94,1)', bg: 'bg-rose-900/20 border border-rose-500/50 shadow-[inset_0_0_20px_rgba(244,63,94,0.2)]', name: "RANGO ÉLITE" },
-  { icon: Gem, color: 'text-pink-400', baseColor: 'text-pink-400', hex: '#f472b6', glow: 'rgba(244,114,182,1)', bg: 'bg-pink-900/20 border border-pink-500/50 shadow-[inset_0_0_20px_rgba(244,114,182,0.2)]', name: "MAESTRO RUBÍ" },
+  { icon: Target, color: 'text-slate-300', baseColor: 'text-slate-300', hex: '#cbd5e1', glow: 'rgba(203,213,225,1)', bg: 'bg-slate-900/20 border border-slate-500/50 shadow-[inset_0_0_20px_rgba(203,213,225,0.2)]', name: "RANGO TITANIO" },
+  { icon: Gem, color: 'text-teal-400', baseColor: 'text-teal-400', hex: '#2dd4bf', glow: 'rgba(45,212,191,1)', bg: 'bg-teal-900/20 border border-teal-500/50 shadow-[inset_0_0_20px_rgba(45,212,191,0.2)]', name: "MAESTRO ZAFIRO" },
   { icon: Star, color: 'text-amber-300', baseColor: 'text-amber-300', hex: '#fcd34d', glow: 'rgba(252,211,77,1)', bg: 'bg-amber-900/20 border border-amber-500/50 shadow-[inset_0_0_20px_rgba(252,211,77,0.2)]', name: "ESTRELLA NOVA" },
-  { icon: Octagon, color: 'text-red-600', baseColor: 'text-red-600', hex: '#dc2626', glow: 'rgba(220,38,38,1)', bg: 'bg-red-900/20 border border-red-600/50 shadow-[inset_0_0_20px_rgba(220,38,38,0.2)]', name: "MÁQUINA BÉLICA" },
+  { icon: Octagon, color: 'text-emerald-500', baseColor: 'text-emerald-500', hex: '#10b981', glow: 'rgba(16,185,129,1)', bg: 'bg-emerald-900/20 border border-emerald-600/50 shadow-[inset_0_0_20px_rgba(16,185,129,0.2)]', name: "MÁQUINA BÉLICA" },
   { icon: Sparkles, color: 'text-indigo-400', baseColor: 'text-indigo-400', hex: '#818cf8', glow: 'rgba(129,140,248,1)', bg: 'bg-indigo-900/20 border border-indigo-500/50 shadow-[inset_0_0_20px_rgba(129,140,248,0.2)]', name: "SUPREMACÍA TOTAL" }
 ];
 
@@ -481,30 +481,150 @@ const SystemLogo = ({ size = 'large' }) => {
   );
 };
 
+const getDynamicColorForPercentage = (pct, isHabit) => {
+  if (pct === null || isNaN(pct)) {
+    return {
+      hex: '#334155',
+      color: 'text-[#2a2a2a]',
+      glow: 'rgba(0,0,0,0)'
+    };
+  }
+  if (pct === 0) {
+    return {
+      hex: '#475569',
+      color: 'text-gray-600',
+      glow: 'rgba(0,0,0,0)'
+    };
+  }
+  if (pct < 10) {
+    return {
+      hex: '#ef4444', // Red
+      color: 'text-red-500',
+      glow: 'rgba(239,68,68,0.5)'
+    };
+  }
+  if (pct < 20) {
+    return {
+      hex: '#f97316', // Orange-Red
+      color: 'text-orange-500',
+      glow: 'rgba(249,115,22,0.5)'
+    };
+  }
+  if (pct < 30) {
+    return {
+      hex: '#ea580c', // Dark Orange
+      color: 'text-orange-600',
+      glow: 'rgba(234,88,12,0.5)'
+    };
+  }
+  if (pct < 40) {
+    return {
+      hex: '#d97706', // Burnt Orange/Amber
+      color: 'text-amber-600',
+      glow: 'rgba(217,119,6,0.5)'
+    };
+  }
+  if (pct < 50) {
+    return {
+      hex: '#f59e0b', // Amber/Yellow
+      color: 'text-amber-500',
+      glow: 'rgba(245,158,11,0.5)'
+    };
+  }
+  if (pct < 60) {
+    return {
+      hex: '#eab308', // Yellow
+      color: 'text-yellow-500',
+      glow: 'rgba(234,179,8,0.5)'
+    };
+  }
+  if (pct < 70) {
+    return {
+      hex: '#84cc16', // Lime
+      color: 'text-lime-500',
+      glow: 'rgba(132,204,22,0.5)'
+    };
+  }
+  if (pct < 80) {
+    return {
+      hex: '#22c55e', // Green
+      color: 'text-green-500',
+      glow: 'rgba(34,197,94,0.5)'
+    };
+  }
+  if (pct < 90) {
+    return {
+      hex: '#10b981', // Emerald
+      color: 'text-emerald-500',
+      glow: 'rgba(16,185,129,0.5)'
+    };
+  }
+  if (pct < 100) {
+    return {
+      hex: '#06b6d4', // Cyan
+      color: 'text-cyan-500',
+      glow: 'rgba(6,182,212,0.5)'
+    };
+  }
+  
+  // 100% completion
+  if (isHabit) {
+    return {
+      hex: '#10b981', // Emerald Green for Habits
+      color: 'text-emerald-400',
+      glow: 'rgba(16,185,129,0.9)'
+    };
+  } else {
+    return {
+      hex: '#3b82f6', // Cobalt Blue for Work
+      color: 'text-blue-400',
+      glow: 'rgba(59,130,246,0.9)'
+    };
+  }
+};
+
 const getRewardTier = (pct, hash = 0, mode = 'workTasks') => {
   if (pct === null || isNaN(pct)) return { icon: Hexagon, color: 'text-[#2a2a2a]', bg: '', name: "SIN DATA", hex: '#333', glow: 'rgba(0,0,0,0)' };
-  if (mode === 'habits') {
-    // Tiers orientados a disciplina corporal/mental
+  
+  const isHabit = mode === 'habits';
+  const dynColor = getDynamicColorForPercentage(pct, isHabit);
+  
+  if (isHabit) {
     if (pct === 0) return { icon: Hexagon, color: 'text-gray-600', bg: '', name: "SIN RACHA", hex: '#4b5563', glow: 'rgba(0,0,0,0)' };
-    if (pct < 20) return { icon: Dumbbell, color: 'text-stone-500', bg: '', name: "SEMILLA", hex: '#78716c', glow: 'rgba(120,113,108,0.8)' };
-    if (pct < 35) return { icon: Shield, color: 'text-amber-700', bg: '', name: "HIERRO", hex: '#b45309', glow: 'rgba(180,83,9,0.8)' };
-    if (pct < 50) return { icon: ShieldAlert, color: 'text-slate-400', bg: '', name: "ACERO", hex: '#94a3b8', glow: 'rgba(148,163,184,0.8)' };
-    if (pct < 65) return { icon: Zap, color: 'text-cyan-400', bg: '', name: "TITANIO", hex: '#22d3ee', glow: 'rgba(34,211,238,0.8)' };
-    if (pct < 80) return { icon: Flame, color: 'text-orange-500', bg: '', name: "FUERZA ÉLITE", hex: '#f97316', glow: 'rgba(249,115,22,0.8)' };
-    if (pct < 90) return { icon: Star, color: 'text-purple-400', bg: '', name: "MAESTRO", hex: '#a855f7', glow: 'rgba(168,85,247,0.8)' };
-    if (pct < 100) return { icon: Sparkles, color: 'text-emerald-400', bg: '', name: "GUERRERO", hex: '#10b981', glow: 'rgba(16,185,129,0.8)' };
-    return { ...PERFECT_TIERS[hash], name: 'GUERRERO TOTAL' };
+    if (pct < 20) return { icon: Dumbbell, color: dynColor.color, bg: '', name: "SEMILLA", hex: dynColor.hex, glow: dynColor.glow };
+    if (pct < 35) return { icon: Shield, color: dynColor.color, bg: '', name: "HIERRO", hex: dynColor.hex, glow: dynColor.glow };
+    if (pct < 50) return { icon: ShieldAlert, color: dynColor.color, bg: '', name: "ACERO", hex: dynColor.hex, glow: dynColor.glow };
+    if (pct < 65) return { icon: Zap, color: dynColor.color, bg: '', name: "TITANIO", hex: dynColor.hex, glow: dynColor.glow };
+    if (pct < 80) return { icon: Flame, color: dynColor.color, bg: '', name: "FUERZA ÉLITE", hex: dynColor.hex, glow: dynColor.glow };
+    if (pct < 90) return { icon: Star, color: dynColor.color, bg: '', name: "MAESTRO", hex: dynColor.hex, glow: dynColor.glow };
+    if (pct < 100) return { icon: Sparkles, color: dynColor.color, bg: '', name: "GUERRERO", hex: dynColor.hex, glow: dynColor.glow };
+    
+    const tier = PERFECT_TIERS[hash];
+    return { 
+      ...tier, 
+      name: 'GUERRERO TOTAL', 
+      color: dynColor.color, 
+      hex: dynColor.hex, 
+      glow: dynColor.glow 
+    };
   }
-  // Tiers orientados a negocios/ejecución (workTasks)
+  
   if (pct === 0) return { icon: Hexagon, color: 'text-gray-600', bg: '', name: "SIN DATOS", hex: '#4b5563', glow: 'rgba(0,0,0,0)' };
-  if (pct < 20) return { icon: Shield, color: 'text-amber-800', bg: '', name: "MADERA", hex: '#92400e', glow: 'rgba(146,64,14,0.8)' };
-  if (pct < 35) return { icon: ShieldAlert, color: 'text-orange-600', bg: '', name: "BRONCE", hex: '#ea580c', glow: 'rgba(234,88,12,0.8)' };
-  if (pct < 50) return { icon: Medal, color: 'text-zinc-300', bg: '', name: "PLATA", hex: '#d4d4d8', glow: 'rgba(212,212,216,0.8)' };
-  if (pct < 65) return { icon: Award, color: 'text-yellow-400', bg: '', name: "ORO", hex: '#facc15', glow: 'rgba(250,204,21,0.8)' };
-  if (pct < 80) return { icon: Gem, color: 'text-blue-400', bg: '', name: "ZAFIRO", hex: '#60a5fa', glow: 'rgba(96,165,250,0.8)' };
-  if (pct < 90) return { icon: Star, color: 'text-green-400', bg: '', name: "ESMERALDA", hex: '#4ade80', glow: 'rgba(74,222,128,0.8)' };
-  if (pct < 100) return { icon: Sparkles, color: 'text-purple-400', bg: '', name: "AMATISTA", hex: '#c084fc', glow: 'rgba(192,132,252,0.8)' };
-  return PERFECT_TIERS[hash];
+  if (pct < 20) return { icon: Shield, color: dynColor.color, bg: '', name: "MADERA", hex: dynColor.hex, glow: dynColor.glow };
+  if (pct < 35) return { icon: ShieldAlert, color: dynColor.color, bg: '', name: "BRONCE", hex: dynColor.hex, glow: dynColor.glow };
+  if (pct < 50) return { icon: Medal, color: dynColor.color, bg: '', name: "PLATA", hex: dynColor.hex, glow: dynColor.glow };
+  if (pct < 65) return { icon: Award, color: dynColor.color, bg: '', name: "ORO", hex: dynColor.hex, glow: dynColor.glow };
+  if (pct < 80) return { icon: Gem, color: dynColor.color, bg: '', name: "ZAFIRO", hex: dynColor.hex, glow: dynColor.glow };
+  if (pct < 90) return { icon: Star, color: dynColor.color, bg: '', name: "ESMERALDA", hex: dynColor.hex, glow: dynColor.glow };
+  if (pct < 100) return { icon: Sparkles, color: dynColor.color, bg: '', name: "AMATISTA", hex: dynColor.hex, glow: dynColor.glow };
+  
+  const tier = PERFECT_TIERS[hash];
+  return { 
+    ...tier, 
+    color: dynColor.color, 
+    hex: dynColor.hex, 
+    glow: dynColor.glow 
+  };
 };
 
 const WeeklyRewardCard = ({ percentage, label, weekDays, mode, isCurrentWeek, isClosed, saturdayDate }) => {
@@ -532,12 +652,7 @@ const WeeklyRewardCard = ({ percentage, label, weekDays, mode, isCurrentWeek, is
   const noData = percentage === null || isNaN(percentage) || workDays.length === 0;
 
   // Stroke color based on progress
-  const strokeColor = isPerfect ? (tier.hex || '#10B981')
-    : validPct >= 80 ? '#a855f7'
-      : validPct >= 60 ? '#3b82f6'
-        : validPct >= 40 ? '#facc15'
-          : validPct >= 20 ? '#f97316'
-            : '#374151';
+  const strokeColor = noData ? '#1a2235' : (tier.hex || '#374151');
 
   return (
     <div
@@ -573,8 +688,12 @@ const WeeklyRewardCard = ({ percentage, label, weekDays, mode, isCurrentWeek, is
           {/* Progress ring */}
           <div className="relative flex items-center justify-center flex-shrink-0">
             <svg
-              className="transform -rotate-90 transition-all duration-1000"
-              style={{ filter: isPerfect ? `drop-shadow(0 0 8px ${tier.hex})` : 'none' }}
+              className="transform -rotate-90"
+              style={{
+                filter: noData ? 'none' : isPerfect ? `drop-shadow(0 0 10px ${strokeColor}ee)` : `drop-shadow(0 0 6px ${strokeColor}60)`,
+                transition: 'filter 0.8s ease-in-out',
+                overflow: 'visible'
+              }}
               width={radius * 2 + strokeWidth * 2}
               height={radius * 2 + strokeWidth * 2}
             >
@@ -585,7 +704,10 @@ const WeeklyRewardCard = ({ percentage, label, weekDays, mode, isCurrentWeek, is
                 strokeWidth={strokeWidth} fill="transparent"
                 strokeDasharray={circumference}
                 strokeDashoffset={noData ? circumference : strokeDashoffset}
-                className="transition-all duration-1000 ease-out" strokeLinecap="round" />
+                style={{
+                  transition: 'stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1), stroke 0.8s ease-in-out'
+                }}
+                strokeLinecap="round" />
             </svg>
             <div className="absolute flex items-center justify-center">
               <span className={`font-black text-sm leading-none ${isPerfect ? 'text-white' : noData ? 'text-[#2a2a2a]' : 'text-white'}`}>
