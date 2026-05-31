@@ -22,6 +22,43 @@ const appId = typeof __app_id !== 'undefined' ? __app_id : 'ceo-masterplan-v31-f
 // --- UTILIDADES DE TIEMPO ---
 const formatDateStr = (y, m, d) => `${y}-${(m + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
 
+const isGoalInMonth = (g, selectedMonth, selectedYear) => {
+  if (!g.startDate || !g.targetDate) {
+    return g.monthIndex === selectedMonth;
+  }
+  const startParts = g.startDate.split('-');
+  const targetParts = g.targetDate.split('-');
+  if (startParts.length < 2 || targetParts.length < 2) {
+    return g.monthIndex === selectedMonth;
+  }
+  const startYear = parseInt(startParts[0], 10);
+  const startMonth = parseInt(startParts[1], 10) - 1; // 0-indexed
+  const targetYear = parseInt(targetParts[0], 10);
+  const targetMonth = parseInt(targetParts[1], 10) - 1; // 0-indexed
+
+  const startVal = startYear * 12 + startMonth;
+  const targetVal = targetYear * 12 + targetMonth;
+  const currentVal = selectedYear * 12 + selectedMonth;
+
+  return currentVal >= startVal && currentVal <= targetVal;
+};
+
+const isGoalInYear = (g, selectedYear) => {
+  if (!g.startDate || !g.targetDate) {
+    return g.yearIndex === selectedYear;
+  }
+  const startParts = g.startDate.split('-');
+  const targetParts = g.targetDate.split('-');
+  if (startParts.length === 0 || targetParts.length === 0) {
+    return g.yearIndex === selectedYear;
+  }
+  const startYear = parseInt(startParts[0], 10);
+  const targetYear = parseInt(targetParts[0], 10);
+
+  return selectedYear >= startYear && selectedYear <= targetYear;
+};
+
+
 const to24h = (h12, m, ampm) => {
   let h = parseInt(h12, 10);
   if (ampm === 'PM' && h !== 12) h += 12;
@@ -694,7 +731,7 @@ export default function App() {
   const [addCatName, setAddCatName] = useState('');
   const [addCatEmoji, setAddCatEmoji] = useState('🎯');
   const [addCatColor, setAddCatColor] = useState('#10b981');
-  const [goalFilter, setGoalFilter] = useState('all'); // 'all' | 'achieved' | 'failed' | 'active'
+  const [goalFilter, setGoalFilter] = useState('active'); // 'all' | 'achieved' | 'failed' | 'active'
   const [deleteCatModal, setDeleteCatModal] = useState({ show: false, catId: null, catTitle: '', isDefault: false, context: 'monthly' });
   const [goalImageModal, setGoalImageModal] = useState({ show: false, goalId: null, goalType: 'monthly' });
   const [goalImgViewer, setGoalImgViewer] = useState({ show: false, src: '' });
@@ -3115,7 +3152,7 @@ export default function App() {
 
                       {/* FILTROS MENSUALES + CONTADORES */}
                       {(() => {
-                        const allGoalsInMonth = config.monthlyGoals.filter(g => g.category === cat.id && g.monthIndex === selectedMonthIndex && g.status !== 'deleted');
+                        const allGoalsInMonth = config.monthlyGoals.filter(g => g.category === cat.id && isGoalInMonth(g, selectedMonthIndex, selectedYear) && g.status !== 'deleted');
                         const achievedCount = allGoalsInMonth.filter(g => g.status === 'achieved' || g.status === 'achieved_early').length;
                         const failedCount = allGoalsInMonth.filter(g => g.status === 'failed').length;
                         const activeCount = allGoalsInMonth.filter(g => g.status === 'active' || g.status === 'pending_validation').length;
@@ -3134,13 +3171,13 @@ export default function App() {
 
                       {/* LISTA DE METAS */}
                       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 p-4 min-h-[180px] max-h-[380px]">
-                        {config.monthlyGoals.filter(g => g.category === cat.id && g.monthIndex === selectedMonthIndex && (goalFilter === 'all' || g.status === goalFilter)).length === 0 ? (
+                        {config.monthlyGoals.filter(g => g.category === cat.id && isGoalInMonth(g, selectedMonthIndex, selectedYear) && (goalFilter === 'all' || g.status === goalFilter)).length === 0 ? (
                           <div className="flex flex-col items-center justify-center h-full opacity-30 mt-8">
                             <Target className={`w-8 h-8 ${cat.text} mb-2`} />
                             <p className="text-[#555] text-[10px] font-black uppercase tracking-widest text-center">{goalFilter === 'all' ? 'Sin objetivos fijados.' : 'Sin metas en este filtro.'}</p>
                           </div>
                         ) : (
-                          config.monthlyGoals.filter(g => g.category === cat.id && g.monthIndex === selectedMonthIndex && (goalFilter === 'all' || g.status === goalFilter)).map(goal => (
+                          config.monthlyGoals.filter(g => g.category === cat.id && isGoalInMonth(g, selectedMonthIndex, selectedYear) && (goalFilter === 'all' || g.status === goalFilter)).map(goal => (
                             <div key={goal.id} tabIndex="0" className={`p-4 rounded-xl relative group border transition-all duration-300 focus:outline-none ${goal.status === 'failed' ? 'bg-red-950/30 border-red-900/50' :
                               goal.status === 'achieved' ? `border-[${cat.accent}]/30 bg-[${cat.accent}]/5` :
                                 goal.status === 'achieved_early' ? 'bg-yellow-950/30 border-yellow-900/50' :
@@ -3162,13 +3199,25 @@ export default function App() {
                               </div>
                               {/* IMÁGENES DE LA META (SOLO LECTURA EXTERNA) */}
                               {goal.images && goal.images.length > 0 && (
-                                <div className="flex gap-1.5 mb-3 flex-wrap">
+                                <div className={`grid gap-1.5 mb-3 w-full ${
+                                  goal.images.length === 1 ? 'grid-cols-1' :
+                                  goal.images.length === 2 ? 'grid-cols-2' :
+                                  'grid-cols-3'
+                                }`}>
                                   {goal.images.map((img, i) => (
-                                    <div key={i} className="relative">
-                                      <img src={img} alt={`meta-img-${i}`} onClick={() => setGoalImgViewer({ show: true, src: img })} className="w-16 h-12 object-cover rounded-lg border border-[#333] cursor-zoom-in hover:scale-105 hover:border-blue-500/50 transition-all" />
+                                    <div key={i} className="relative w-full">
+                                      <img
+                                        src={img}
+                                        alt={`meta-img-${i}`}
+                                        onClick={() => setGoalImgViewer({ show: true, src: img })}
+                                        className={`w-full object-contain bg-black/40 rounded-lg border border-[#333] cursor-zoom-in hover:scale-[1.02] hover:border-blue-500/50 transition-all ${
+                                          goal.images.length === 1 ? 'h-28 md:h-36' :
+                                          goal.images.length === 2 ? 'h-24 md:h-28' :
+                                          'h-20 md:h-24'
+                                        }`}
+                                      />
                                     </div>
                                   ))}
-
                                 </div>
                               )}
 
@@ -3360,7 +3409,7 @@ export default function App() {
             return (
               <div className={`grid grid-cols-1 ${yCols} gap-5`}>
                 {allYearlyCats.map(cat => {
-                  const allGoalsInYear = config.yearlyGoals.filter(g => g.category === cat.id && g.yearIndex === selectedYear && g.status !== 'deleted');
+                  const allGoalsInYear = config.yearlyGoals.filter(g => g.category === cat.id && isGoalInYear(g, selectedYear) && g.status !== 'deleted');
                   const achievedYearCount = allGoalsInYear.filter(g => g.status === 'achieved' || g.status === 'achieved_early').length;
                   const failedYearCount = allGoalsInYear.filter(g => g.status === 'failed').length;
                   const activeYearCount = allGoalsInYear.filter(g => g.status === 'active' || g.status === 'pending_validation').length;
@@ -3403,13 +3452,13 @@ export default function App() {
                       </div>
                       {/* LISTA METAS */}
                       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 p-4 min-h-[250px] max-h-[500px]">
-                        {config.yearlyGoals.filter(g => g.category === cat.id && g.yearIndex === selectedYear && (goalFilter === 'all' || g.status === goalFilter)).length === 0 ? (
+                        {config.yearlyGoals.filter(g => g.category === cat.id && isGoalInYear(g, selectedYear) && (goalFilter === 'all' || g.status === goalFilter)).length === 0 ? (
                           <div className="flex flex-col items-center justify-center h-full opacity-30 mt-10">
                             <ShieldAlert className={`w-10 h-10 text-[#555] mb-3`} />
                             <p className="text-[#555] text-[10px] font-black uppercase tracking-widest text-center">{goalFilter === 'all' ? 'Fija tu visión anual.' : 'Sin metas en este filtro.'}</p>
                           </div>
                         ) : (
-                          config.yearlyGoals.filter(g => g.category === cat.id && g.yearIndex === selectedYear && (goalFilter === 'all' || g.status === goalFilter)).map(goal => (
+                          config.yearlyGoals.filter(g => g.category === cat.id && isGoalInYear(g, selectedYear) && (goalFilter === 'all' || g.status === goalFilter)).map(goal => (
                             <div key={goal.id} tabIndex="0" className={`p-4 rounded-xl relative group border transition-all duration-300 focus:outline-none ${goal.status === 'failed' ? 'bg-red-950/30 border-red-900/50' :
                               goal.status === 'achieved' || goal.status === 'achieved_early' ? 'bg-[#0f1a12] border-emerald-900/40' :
                                 'bg-[#111] border-[#222] hover:border-[#333]'
@@ -3429,10 +3478,23 @@ export default function App() {
                               </div>
                               {/* IMÁGENES DE LA META (SOLO LECTURA EXTERNA) */}
                               {goal.images && goal.images.length > 0 && (
-                                <div className="flex gap-1.5 mb-3 flex-wrap">
+                                <div className={`grid gap-1.5 mb-3 w-full ${
+                                  goal.images.length === 1 ? 'grid-cols-1' :
+                                  goal.images.length === 2 ? 'grid-cols-2' :
+                                  'grid-cols-3'
+                                }`}>
                                   {goal.images.map((img, i) => (
-                                    <div key={i} className="relative">
-                                      <img src={img} alt={`ygoal-img-${i}`} onClick={() => setGoalImgViewer({ show: true, src: img })} className="w-16 h-12 object-cover rounded-lg border border-[#333] hover:scale-105 transition-transform cursor-zoom-in" />
+                                    <div key={i} className="relative w-full">
+                                      <img
+                                        src={img}
+                                        alt={`ygoal-img-${i}`}
+                                        onClick={() => setGoalImgViewer({ show: true, src: img })}
+                                        className={`w-full object-contain bg-black/40 rounded-lg border border-[#333] cursor-zoom-in hover:scale-[1.02] hover:border-blue-500/50 transition-all ${
+                                          goal.images.length === 1 ? 'h-28 md:h-36' :
+                                          goal.images.length === 2 ? 'h-24 md:h-28' :
+                                          'h-20 md:h-24'
+                                        }`}
+                                      />
                                     </div>
                                   ))}
                                 </div>
