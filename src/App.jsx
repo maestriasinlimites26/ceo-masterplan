@@ -3221,13 +3221,15 @@ export default function App() {
                                 </div>
                               )}
 
-                              {/* FECHA */}
-                              <p className="text-[#64748B] text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 mb-3 w-fit transition-all duration-300 ease-out origin-left hover:scale-105 hover:text-blue-400">
-                                <CalendarIcon className="w-3.5 h-3.5 transition-colors duration-300" />
-                                <span className="font-semibold">{goal.startDate}</span>
-                                <span className="text-[#334155]">→</span>
-                                <span className="font-semibold">{goal.targetDate}</span>
-                              </p>
+                              {/* FECHA (SILVER BADGE 2026) */}
+                              <div className="flex justify-center mb-3 select-none">
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#c0c0c0]/20 bg-[#0c0c0e] text-[9px] font-black uppercase tracking-widest text-[#d1d1d6] transition-all duration-300 ease-out hover:scale-105 hover:border-[#c0c0c0]/80 hover:text-white hover:shadow-[0_0_12px_rgba(192,192,192,0.12)] cursor-default">
+                                  <CalendarIcon className="w-3.5 h-3.5 text-[#c0c0c0]/60" />
+                                  <span>{goal.startDate}</span>
+                                  <span className="text-[#c0c0c0]/30 font-black">→</span>
+                                  <span>{goal.targetDate}</span>
+                                </div>
+                              </div>
 
                               {/* FRASE + % */}
                               <div className="flex justify-between items-center mb-2">
@@ -3502,13 +3504,15 @@ export default function App() {
                                   ))}
                                 </div>
                               )}
-                              {/* FECHA */}
-                              <p className="text-[#64748B] text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 mb-3 w-fit transition-all duration-300 ease-out origin-left hover:scale-105 hover:text-blue-400">
-                                <Target className="w-3.5 h-3.5 transition-colors duration-300" />
-                                <span className="font-semibold">{goal.startDate}</span>
-                                <span className="text-[#334155]">→</span>
-                                <span className="font-semibold">{goal.targetDate}</span>
-                              </p>
+                              {/* FECHA (GOLD BADGE 2026) */}
+                              <div className="flex justify-center mb-3 select-none">
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#ffd700]/25 bg-[#0f0c08] text-[9px] font-black uppercase tracking-widest text-[#f7e3af] transition-all duration-300 ease-out hover:scale-105 hover:border-[#ffd700]/80 hover:text-white hover:shadow-[0_0_12px_rgba(255,215,0,0.15)] cursor-default">
+                                  <Target className="w-3.5 h-3.5 text-[#ffd700]/60" />
+                                  <span>{goal.startDate}</span>
+                                  <span className="text-[#ffd700]/30 font-black">→</span>
+                                  <span>{goal.targetDate}</span>
+                                </div>
+                              </div>
                               {/* FRASE + % */}
                               <div className="flex justify-between items-center mb-2">
                                 <span className={`text-[9px] font-black uppercase tracking-widest ${goal.status === 'failed' ? 'text-red-500' : cat.text
