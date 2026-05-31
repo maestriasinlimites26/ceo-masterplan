@@ -491,9 +491,9 @@ const getDynamicColorForPercentage = (pct, isHabit) => {
   }
   if (pct === 0) {
     return {
-      hex: '#475569',
-      color: 'text-gray-600',
-      glow: 'rgba(0,0,0,0)'
+      hex: '#ef4444', // Red for 0%
+      color: 'text-red-500',
+      glow: 'rgba(239,68,68,0.3)'
     };
   }
   if (pct < 10) {
@@ -590,7 +590,7 @@ const getRewardTier = (pct, hash = 0, mode = 'workTasks') => {
   const dynColor = getDynamicColorForPercentage(pct, isHabit);
   
   if (isHabit) {
-    if (pct === 0) return { icon: Hexagon, color: 'text-gray-600', bg: '', name: "SIN RACHA", hex: '#4b5563', glow: 'rgba(0,0,0,0)' };
+    if (pct === 0) return { icon: Hexagon, color: dynColor.color, bg: '', name: "SIN RACHA", hex: dynColor.hex, glow: dynColor.glow };
     if (pct < 20) return { icon: Dumbbell, color: dynColor.color, bg: '', name: "SEMILLA", hex: dynColor.hex, glow: dynColor.glow };
     if (pct < 35) return { icon: Shield, color: dynColor.color, bg: '', name: "HIERRO", hex: dynColor.hex, glow: dynColor.glow };
     if (pct < 50) return { icon: ShieldAlert, color: dynColor.color, bg: '', name: "ACERO", hex: dynColor.hex, glow: dynColor.glow };
@@ -609,7 +609,7 @@ const getRewardTier = (pct, hash = 0, mode = 'workTasks') => {
     };
   }
   
-  if (pct === 0) return { icon: Hexagon, color: 'text-gray-600', bg: '', name: "SIN DATOS", hex: '#4b5563', glow: 'rgba(0,0,0,0)' };
+  if (pct === 0) return { icon: Hexagon, color: dynColor.color, bg: '', name: "SIN DATOS", hex: dynColor.hex, glow: dynColor.glow };
   if (pct < 20) return { icon: Shield, color: dynColor.color, bg: '', name: "MADERA", hex: dynColor.hex, glow: dynColor.glow };
   if (pct < 35) return { icon: ShieldAlert, color: dynColor.color, bg: '', name: "BRONCE", hex: dynColor.hex, glow: dynColor.glow };
   if (pct < 50) return { icon: Medal, color: dynColor.color, bg: '', name: "PLATA", hex: dynColor.hex, glow: dynColor.glow };
@@ -710,7 +710,12 @@ const WeeklyRewardCard = ({ percentage, label, weekDays, mode, isCurrentWeek, is
                 strokeLinecap="round" />
             </svg>
             <div className="absolute flex items-center justify-center">
-              <span className={`font-black text-sm leading-none ${isPerfect ? 'text-white' : noData ? 'text-[#2a2a2a]' : 'text-white'}`}>
+              <span className={`font-black text-sm leading-none ${noData ? 'text-[#2a2a2a]' : tier.color}`}
+                style={{
+                  textShadow: noData ? 'none' : `0 0 8px ${strokeColor}40`,
+                  transition: 'color 0.8s ease-in-out'
+                }}
+              >
                 {noData ? '—' : `${Math.round(validPct)}%`}
               </span>
             </div>
