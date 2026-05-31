@@ -3222,8 +3222,11 @@ export default function App() {
                               )}
 
                               {/* FECHA */}
-                              <p className="text-[#555] text-[9px] uppercase font-bold tracking-wider flex items-center gap-1 mb-3">
-                                <CalendarIcon className="w-2.5 h-2.5" /> {goal.startDate} → {goal.targetDate}
+                              <p className="text-[#64748B] text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 mb-3 w-fit transition-all duration-300 ease-out origin-left hover:scale-105 hover:text-blue-400">
+                                <CalendarIcon className="w-3.5 h-3.5 transition-colors duration-300" />
+                                <span className="font-semibold">{goal.startDate}</span>
+                                <span className="text-[#334155]">→</span>
+                                <span className="font-semibold">{goal.targetDate}</span>
                               </p>
 
                               {/* FRASE + % */}
@@ -3500,8 +3503,11 @@ export default function App() {
                                 </div>
                               )}
                               {/* FECHA */}
-                              <p className="text-[#555] text-[9px] uppercase font-bold tracking-wider flex items-center gap-1 mb-3">
-                                <Target className="w-2.5 h-2.5" /> {goal.startDate} → {goal.targetDate}
+                              <p className="text-[#64748B] text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 mb-3 w-fit transition-all duration-300 ease-out origin-left hover:scale-105 hover:text-blue-400">
+                                <Target className="w-3.5 h-3.5 transition-colors duration-300" />
+                                <span className="font-semibold">{goal.startDate}</span>
+                                <span className="text-[#334155]">→</span>
+                                <span className="font-semibold">{goal.targetDate}</span>
                               </p>
                               {/* FRASE + % */}
                               <div className="flex justify-between items-center mb-2">
