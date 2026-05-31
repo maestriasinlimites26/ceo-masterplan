@@ -1389,6 +1389,117 @@ export default function App() {
   }, [config.workTasks, config.habits, isConfigLoaded, session.isLoggedIn, actualTodayStr]);
   // --------------------------------------------------------------------
 
+  // --- NUEVO: AUTO-PURGADO DE ELEMENTOS ELIMINADOS (30 DÍAS) ---
+  const hasPurgedRef = useRef(false);
+  useEffect(() => {
+    if (!isConfigLoaded || !session.isLoggedIn || hasPurgedRef.current) return;
+
+    hasPurgedRef.current = true;
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    let needsUpdate = false;
+    const newConfig = { ...config };
+    const goalsToDeleteImages = [];
+
+    // 1. Colecciones tipo Array con status === 'deleted'
+    const statusDeletedKeys = ['workTasks', 'habits', 'maintenanceTasks', 'monthlyGoals', 'yearlyGoals'];
+    statusDeletedKeys.forEach(key => {
+      const arr = config[key] || [];
+      const filtered = arr.filter(item => {
+        if (item.status === 'deleted' && item.deletedAt && item.deletedAt < thirtyDaysAgo) {
+          needsUpdate = true;
+          if (key === 'monthlyGoals' || key === 'yearlyGoals') {
+            goalsToDeleteImages.push(item.id);
+          }
+          return false;
+        }
+        return true;
+      });
+      if (filtered.length !== arr.length) {
+        newConfig[key] = filtered;
+      }
+    });
+
+    // 2. Colecciones tipo Array con deleted === true
+    const deletedTrueKeys = ['monthlyCustomCategories', 'yearlyCustomCategories'];
+    deletedTrueKeys.forEach(key => {
+      const arr = config[key] || [];
+      const filtered = arr.filter(item => {
+        if (item.deleted && item.deletedAt && item.deletedAt < thirtyDaysAgo) {
+          needsUpdate = true;
+          return false;
+        }
+        return true;
+      });
+      if (filtered.length !== arr.length) {
+        newConfig[key] = filtered;
+      }
+    });
+
+    // 3. Imágenes de Vision Board (config.images)
+    if (config.images && config.images.length > 0) {
+      const filtered = config.images.filter(img => {
+        if (typeof img === 'object' && img.deleted && img.deletedAt && img.deletedAt < thirtyDaysAgo) {
+          needsUpdate = true;
+          return false;
+        }
+        return true;
+      });
+      if (filtered.length !== config.images.length) {
+        newConfig.images = filtered;
+      }
+    }
+
+    // 4. Overrides (objetos/mapas)
+    const overrideKeys = ['monthlyDefaultOverrides', 'yearlyDefaultOverrides'];
+    overrideKeys.forEach(key => {
+      const overrides = config[key] || {};
+      let mapChanged = false;
+      const copy = { ...overrides };
+      Object.entries(overrides).forEach(([catId, val]) => {
+        if (val && val.deleted && val.deletedAt && val.deletedAt < thirtyDaysAgo) {
+          delete copy[catId];
+          mapChanged = true;
+          needsUpdate = true;
+        }
+      });
+      if (mapChanged) {
+        newConfig[key] = copy;
+      }
+    });
+
+    // 5. deletedMotives
+    if (config.deletedMotives && config.deletedMotives.length > 0) {
+      const filtered = config.deletedMotives.filter(m => {
+        if (m.deletedAt && m.deletedAt < thirtyDaysAgo) {
+          needsUpdate = true;
+          return false;
+        }
+        return true;
+      });
+      if (filtered.length !== config.deletedMotives.length) {
+        newConfig.deletedMotives = filtered;
+      }
+    }
+
+    if (needsUpdate) {
+      if (goalsToDeleteImages.length > 0) {
+        const updatedGoalImages = { ...goalImages };
+        goalsToDeleteImages.forEach(goalId => {
+          delete updatedGoalImages[goalId];
+        });
+        setGoalImages(updatedGoalImages);
+        setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_goal_images', session.uid), {
+          images: updatedGoalImages
+        }, { merge: true }).catch(err => console.error("Error auto-purging goal images", err));
+      }
+
+      setConfig(newConfig);
+      saveConfig(newConfig);
+      console.log("Auto-purged expired items from trash older than 30 days.");
+    }
+  }, [isConfigLoaded, session.isLoggedIn, config, goalImages]);
+  // --------------------------------------------------------------------
+
   // Reproductor de sonido de aviso / alerta
   useEffect(() => {
     if (
@@ -1433,7 +1544,24 @@ export default function App() {
   };
 
   const handleConfirmPsychoDelete = () => {
-    const newConfig = { ...config, motives: { q1: '', q2: '', q3: '' }, motivesLocked: true };
+    const oldMotive = config.motives || {};
+    const hasData = oldMotive.q1 || oldMotive.q2 || oldMotive.q3;
+    let deletedList = [...(config.deletedMotives || [])];
+    if (hasData) {
+      deletedList.push({
+        id: 'mot_' + Date.now(),
+        q1: oldMotive.q1 || '',
+        q2: oldMotive.q2 || '',
+        q3: oldMotive.q3 || '',
+        deletedAt: Date.now()
+      });
+    }
+    const newConfig = { 
+      ...config, 
+      motives: { q1: '', q2: '', q3: '' }, 
+      motivesLocked: true,
+      deletedMotives: deletedList
+    };
     saveConfig(newConfig);
     setConfig(newConfig);
     setShowPsychologicalModal(false);
@@ -1537,19 +1665,22 @@ export default function App() {
     const overridesKey = ctx === 'monthly' ? 'monthlyDefaultOverrides' : 'yearlyDefaultOverrides';
     const goalsKey = ctx === 'monthly' ? 'monthlyGoals' : 'yearlyGoals';
 
+    let nc;
     if (isDefault) {
       const overrides = { ...(config[overridesKey] || {}) };
-      overrides[catId] = { ...overrides[catId], deleted: true };
-      const nc = { ...config, [overridesKey]: overrides, [goalsKey]: config[goalsKey].filter(g => g.category !== catId) };
-      setConfig(nc); saveConfig(nc);
+      overrides[catId] = { ...overrides[catId], deleted: true, deletedAt: Date.now() };
+      const updatedGoals = (config[goalsKey] || []).map(g => g.category === catId ? { ...g, status: 'deleted', deletedAt: Date.now() } : g);
+      nc = { ...config, [overridesKey]: overrides, [goalsKey]: updatedGoals };
     } else {
-      const nc = {
+      const customCats = (config[customKey] || []).map(c => c.id === catId ? { ...c, deleted: true, deletedAt: Date.now() } : c);
+      const updatedGoals = (config[goalsKey] || []).map(g => g.category === catId ? { ...g, status: 'deleted', deletedAt: Date.now() } : g);
+      nc = {
         ...config,
-        [customKey]: (config[customKey] || []).filter(c => c.id !== catId),
-        [goalsKey]: config[goalsKey].filter(g => g.category !== catId),
+        [customKey]: customCats,
+        [goalsKey]: updatedGoals,
       };
-      setConfig(nc); saveConfig(nc);
     }
+    setConfig(nc); saveConfig(nc);
     setDeleteCatModal({ show: false, catId: null, catTitle: '', isDefault: false, context: 'monthly' });
   };
 
@@ -1598,21 +1729,9 @@ export default function App() {
     }
   };
 
-  const handleConfirmKillGoal = async () => {
+  const handleConfirmKillGoal = () => {
     const targetArray = goalPsychoModal.type === 'monthly' ? 'monthlyGoals' : 'yearlyGoals';
-    const updatedArray = config[targetArray].filter(g => g.id !== goalPsychoModal.goalId);
-
-    // Eliminar imágenes de la base de datos de fotos de metas
-    const updatedGoalImages = { ...goalImages };
-    delete updatedGoalImages[goalPsychoModal.goalId];
-    setGoalImages(updatedGoalImages);
-    try {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_goal_images', session.uid), {
-        images: updatedGoalImages
-      }, { merge: true });
-    } catch (e) {
-      console.error("Error eliminando imágenes del objetivo:", e);
-    }
+    const updatedArray = config[targetArray].map(g => g.id === goalPsychoModal.goalId ? { ...g, status: 'deleted', deletedAt: Date.now() } : g);
 
     const newConfig = { ...config, [targetArray]: updatedArray };
     setConfig(newConfig);
@@ -2145,17 +2264,35 @@ export default function App() {
     setImageActionModal({ show: true, index });
   };
 
+  const getOriginalImageIndex = (displayIndex) => {
+    if (displayIndex === null) return -1;
+    const validImages = (config.images || []).filter(img => typeof img === 'string' || !img.deleted);
+    if (validImages.length === 0) return -1;
+    const targetImage = validImages[displayIndex % validImages.length];
+    return (config.images || []).findIndex(img => {
+      const src = typeof img === 'object' ? img.src : img;
+      return src === targetImage;
+    });
+  };
+
   const handleConfirmImageEvolve = () => {
-    const realIndex = imageActionModal.index % config.images.length;
-    setActiveImageSlot(realIndex);
+    const realIndex = getOriginalImageIndex(imageActionModal.index);
+    if (realIndex !== -1) {
+      setActiveImageSlot(realIndex);
+    }
     setImageActionModal({ show: false, index: null });
     setTimeout(() => fileInputRef.current.click(), 100);
   };
 
   const handleConfirmImageKill = async () => {
-    const realIndex = imageActionModal.index % config.images.length;
+    const realIndex = getOriginalImageIndex(imageActionModal.index);
+    if (realIndex === -1) return;
+    const targetImage = config.images[realIndex];
     const newImages = [...config.images];
-    newImages.splice(realIndex, 1);
+    
+    const imageSrc = typeof targetImage === 'object' ? targetImage.src : targetImage;
+    const imageId = typeof targetImage === 'object' ? targetImage.id : `img_${Date.now()}`;
+    newImages[realIndex] = { id: imageId, src: imageSrc, deleted: true, deletedAt: Date.now() };
 
     setConfig(prev => ({ ...prev, images: newImages }));
     setImageActionModal({ show: false, index: null });
@@ -2671,6 +2808,14 @@ export default function App() {
     const handleDestroy = (item) => {
       if (['workTasks', 'habits', 'maintenanceTasks', 'monthlyGoals', 'yearlyGoals', 'monthlyCustomCategories', 'yearlyCustomCategories'].includes(item._type)) {
         const arr = config[item._type].filter(x => x.id !== item.id);
+        if (item._type === 'monthlyGoals' || item._type === 'yearlyGoals') {
+          const updatedGoalImages = { ...goalImages };
+          delete updatedGoalImages[item.id];
+          setGoalImages(updatedGoalImages);
+          setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_goal_images', session.uid), {
+            images: updatedGoalImages
+          }, { merge: true }).catch(err => console.error("Error destroying goal images", err));
+        }
         setConfig({ ...config, [item._type]: arr }); saveConfig({ ...config, [item._type]: arr });
       } else if (item._type === 'images') {
         const arr = config.images.filter(i => !(typeof i === 'object' && i.id === item.id));
@@ -3479,13 +3624,13 @@ export default function App() {
 
                       {/* LISTA DE METAS */}
                       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 p-4 min-h-[180px] max-h-[380px]">
-                        {config.monthlyGoals.filter(g => g.category === cat.id && isGoalInMonth(g, selectedMonthIndex, selectedYear) && (goalFilter === 'all' || g.status === goalFilter)).length === 0 ? (
+                        {config.monthlyGoals.filter(g => g.category === cat.id && isGoalInMonth(g, selectedMonthIndex, selectedYear) && g.status !== 'deleted' && (goalFilter === 'all' || g.status === goalFilter)).length === 0 ? (
                           <div className="flex flex-col items-center justify-center h-full opacity-30 mt-8">
                             <Target className={`w-8 h-8 ${cat.text} mb-2`} />
                             <p className="text-[#555] text-[10px] font-black uppercase tracking-widest text-center">{goalFilter === 'all' ? 'Sin objetivos fijados.' : 'Sin metas en este filtro.'}</p>
                           </div>
                         ) : (
-                          config.monthlyGoals.filter(g => g.category === cat.id && isGoalInMonth(g, selectedMonthIndex, selectedYear) && (goalFilter === 'all' || g.status === goalFilter)).map(goal => (
+                          config.monthlyGoals.filter(g => g.category === cat.id && isGoalInMonth(g, selectedMonthIndex, selectedYear) && g.status !== 'deleted' && (goalFilter === 'all' || g.status === goalFilter)).map(goal => (
                             <div key={goal.id} tabIndex="0" className={`p-4 rounded-xl relative group border transition-all duration-300 focus:outline-none ${goal.status === 'failed' ? 'bg-red-950/30 border-red-900/50' :
                               goal.status === 'achieved' ? `border-[${cat.accent}]/30 bg-[${cat.accent}]/5` :
                                 goal.status === 'achieved_early' ? 'bg-yellow-950/30 border-yellow-900/50' :
@@ -3714,7 +3859,7 @@ export default function App() {
               buildCatY('family', 'Legado & Familia', Home, '#f59e0b'),
               buildCatY('personal', 'Evolución Suprema', Dumbbell, '#8b5cf6'),
             ].filter(Boolean);
-            const customCatsYearly = (config.yearlyCustomCategories || []).map(c => {
+            const customCatsYearly = (config.yearlyCustomCategories || []).filter(c => !c.deleted).map(c => {
               const cs = getColorStyle(c.color || '#10b981');
               return { ...c, isDefault: false, ...cs, emoji: c.emoji || '🎯', icon: null };
             });
@@ -3767,13 +3912,13 @@ export default function App() {
                       </div>
                       {/* LISTA METAS */}
                       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 p-4 min-h-[250px] max-h-[500px]">
-                        {config.yearlyGoals.filter(g => g.category === cat.id && isGoalInYear(g, selectedYear) && (goalFilter === 'all' || g.status === goalFilter)).length === 0 ? (
+                        {config.yearlyGoals.filter(g => g.category === cat.id && isGoalInYear(g, selectedYear) && g.status !== 'deleted' && (goalFilter === 'all' || g.status === goalFilter)).length === 0 ? (
                           <div className="flex flex-col items-center justify-center h-full opacity-30 mt-10">
                             <ShieldAlert className={`w-10 h-10 text-[#555] mb-3`} />
                             <p className="text-[#555] text-[10px] font-black uppercase tracking-widest text-center">{goalFilter === 'all' ? 'Fija tu visión anual.' : 'Sin metas en este filtro.'}</p>
                           </div>
                         ) : (
-                          config.yearlyGoals.filter(g => g.category === cat.id && isGoalInYear(g, selectedYear) && (goalFilter === 'all' || g.status === goalFilter)).map(goal => (
+                          config.yearlyGoals.filter(g => g.category === cat.id && isGoalInYear(g, selectedYear) && g.status !== 'deleted' && (goalFilter === 'all' || g.status === goalFilter)).map(goal => (
                             <div key={goal.id} tabIndex="0" className={`p-4 rounded-xl relative group border transition-all duration-300 focus:outline-none ${goal.status === 'failed' ? 'bg-red-950/30 border-red-900/50' :
                               goal.status === 'achieved' || goal.status === 'achieved_early' ? 'bg-[#0f1a12] border-emerald-900/40' :
                                 'bg-[#111] border-[#222] hover:border-[#333]'
@@ -4850,12 +4995,12 @@ export default function App() {
             <p className="text-[#64748B] text-[10px] font-black uppercase tracking-[0.2em] mb-6">ESTÁS A PUNTO DE BORRAR UNA PARTE DE TU FUTURO</p>
 
             {/* EL OBJETO DE PÉRDIDA (CUADRO EN BLANCO Y NEGRO) */}
-            {imageActionModal.index !== null && config.images.length > 0 && (
+            {imageActionModal.index !== null && displayImages.length > 0 && (
               <div className="relative w-full max-w-xs md:max-w-sm h-40 md:h-48 mb-6 rounded-2xl overflow-hidden border-2 border-[#1E293B] shadow-[0_0_30px_rgba(0,0,0,0.8)] group">
                 {/* Overlay oscuro y filtro de escala de grises para impacto psicológico */}
                 <div className="absolute inset-0 bg-black/20 z-10 pointer-events-none"></div>
                 <img
-                  src={config.images[imageActionModal.index % config.images.length]}
+                  src={displayImages[imageActionModal.index]}
                   alt="Visión en peligro"
                   className="w-full h-full object-cover grayscale contrast-125 brightness-75 transition-all duration-700 group-hover:scale-105"
                 />
