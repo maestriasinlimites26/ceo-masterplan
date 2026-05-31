@@ -1189,7 +1189,10 @@ export default function App() {
           } else {
             if (currentMs >= targetMs) timeProg = 100;
             else if (currentMs <= startMs) timeProg = 0;
-            else timeProg = Math.floor(((currentMs - startMs) / (targetMs - startMs)) * 100);
+            else {
+              const rawProg = ((currentMs - startMs) / (targetMs - startMs)) * 100;
+              timeProg = Number(rawProg.toFixed(2));
+            }
           }
 
           if (g.progress !== timeProg || (timeProg === 100 && g.status === 'active')) {
@@ -3347,7 +3350,7 @@ export default function App() {
                                 <span className={`text-base font-black tabular-nums ${goal.status === 'failed' ? 'text-red-500' :
                                   goal.status === 'achieved_early' ? 'text-yellow-400' :
                                     cat.text
-                                  }`}>{goal.progress}%</span>
+                                  }`}>{typeof goal.progress === 'number' ? (goal.progress % 1 === 0 ? goal.progress : goal.progress.toFixed(2)) : goal.progress}%</span>
                               </div>
 
                               {/* BARRA DE PROGRESO */}
@@ -3381,7 +3384,7 @@ export default function App() {
                                   <div className="flex items-center gap-2">
                                     <Trophy className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
                                     <div>
-                                      <p className="text-yellow-400 text-[8px] font-black uppercase tracking-widest">Récord destrozado al {goal.earlyPercentage}%</p>
+                                      <p className="text-yellow-400 text-[8px] font-black uppercase tracking-widest">Récord destrozado al {typeof goal.earlyPercentage === 'number' ? (goal.earlyPercentage % 1 === 0 ? goal.earlyPercentage : goal.earlyPercentage.toFixed(2)) : goal.earlyPercentage}%</p>
                                       <p className="text-yellow-700 text-[8px] font-bold">{goal.earlyDate}</p>
                                     </div>
                                   </div>
@@ -3625,7 +3628,7 @@ export default function App() {
                                 <span className={`text-[9px] font-black uppercase tracking-widest ${goal.status === 'failed' ? 'text-red-500' : cat.text
                                   }`} style={{ maxWidth: '75%' }}>{getProgressPhrase(goal.progress, goal.status, cat.id)}</span>
                                 <span className={`text-lg font-black ${goal.status === 'failed' ? 'text-red-500' : goal.status === 'achieved_early' ? 'text-yellow-400' : cat.text
-                                  }`}>{goal.progress}%</span>
+                                  }`}>{typeof goal.progress === 'number' ? (goal.progress % 1 === 0 ? goal.progress : goal.progress.toFixed(2)) : goal.progress}%</span>
                               </div>
                               {/* BARRA */}
                               <div className="relative w-full h-4 bg-[#0a0a0a] rounded-full border border-[#1e1e1e] shadow-inner mb-3">
@@ -3649,7 +3652,7 @@ export default function App() {
                                 <div className="bg-yellow-950/40 border border-yellow-800/50 rounded-lg p-3 mb-2 flex items-center gap-3">
                                   <Trophy className="w-4 h-4 text-yellow-400 shrink-0" />
                                   <div>
-                                    <p className="text-yellow-400 text-[9px] font-black uppercase tracking-widest">Récord destrozado al {goal.earlyPercentage}%</p>
+                                    <p className="text-yellow-400 text-[9px] font-black uppercase tracking-widest">Récord destrozado al {typeof goal.earlyPercentage === 'number' ? (goal.earlyPercentage % 1 === 0 ? goal.earlyPercentage : goal.earlyPercentage.toFixed(2)) : goal.earlyPercentage}%</p>
                                     <p className="text-yellow-700 text-[8px] font-bold mt-0.5">{goal.earlyDate}</p>
                                   </div>
                                 </div>
