@@ -771,32 +771,7 @@ export default function App() {
     }
   }, [goalPsychoModal.show]);
 
-  // Reproductor de sonido de aviso / alerta
-  useEffect(() => {
-    if (
-      taskDeleteModal.show ||
-      advancedDeleteModal.show ||
-      deleteCatModal.show ||
-      goalPsychoModal.show ||
-      (failureModal && failureModal.show) ||
-      showPsychologicalModal ||
-      guestToDelete
-    ) {
-      const audioLocal = new Audio("/sonido_de_error.mp3");
-      audioLocal.play().catch(() => {
-        const audioAbsolute = new Audio("file:///C:/Users/clive/Downloads/sonido%20de%20error.mp3");
-        audioAbsolute.play().catch(err => console.warn("No se pudo reproducir el sonido de error:", err));
-      });
-    }
-  }, [
-    taskDeleteModal.show,
-    advancedDeleteModal.show,
-    deleteCatModal.show,
-    goalPsychoModal.show,
-    failureModal?.show,
-    showPsychologicalModal,
-    guestToDelete
-  ]);
+
 
   // Auto-click de input de archivo cuando se solicita agregar imagen a meta
   useEffect(() => {
@@ -1286,6 +1261,33 @@ export default function App() {
     }
   }, [config.workTasks, config.habits, isConfigLoaded, session.isLoggedIn, actualTodayStr]);
   // --------------------------------------------------------------------
+
+  // Reproductor de sonido de aviso / alerta
+  useEffect(() => {
+    if (
+      taskDeleteModal.show ||
+      advancedDeleteModal.show ||
+      deleteCatModal.show ||
+      goalPsychoModal.show ||
+      (failureModal && failureModal.show) ||
+      showPsychologicalModal ||
+      guestToDelete
+    ) {
+      const audioLocal = new Audio("/sonido_de_error.mp3");
+      audioLocal.play().catch(() => {
+        const audioAbsolute = new Audio("file:///C:/Users/clive/Downloads/sonido%20de%20error.mp3");
+        audioAbsolute.play().catch(err => console.warn("No se pudo reproducir el sonido de error:", err));
+      });
+    }
+  }, [
+    taskDeleteModal.show,
+    advancedDeleteModal.show,
+    deleteCatModal.show,
+    goalPsychoModal.show,
+    failureModal?.show,
+    showPsychologicalModal,
+    guestToDelete
+  ]);
 
   const isPendingOnboarding = session.isLoggedIn && isConfigLoaded && (!config.motivesLocked || (session.role === 'guest' && !config.tutorialSeen));
 
