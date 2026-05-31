@@ -2176,35 +2176,6 @@ export default function App() {
             <p className="text-center text-[10px] text-[#64748B] font-bold uppercase tracking-widest mt-2">
               Sistema restringido. Ingreso exclusivo mediante whitelist.
             </p>
-
-            {/* Whitelist Autorizada Desplegable */}
-            <div className="mt-4 border border-[#1E293B] rounded-xl bg-black/40 overflow-hidden text-left relative z-30">
-              <details className="group">
-                <summary className="flex items-center justify-between p-3 cursor-pointer select-none">
-                  <span className="text-[9px] text-blue-400 font-black uppercase tracking-wider flex items-center gap-2">
-                    <Shield className="w-3.5 h-3.5" /> Ver Whitelist Autorizada
-                  </span>
-                  <span className="text-[#64748B] group-open:rotate-180 transition-transform duration-300">
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </span>
-                </summary>
-                <div className="p-3 pt-0 border-t border-[#1E293B] max-h-36 overflow-y-auto custom-scrollbar">
-                  <ul className="space-y-1.5">
-                    {Array.from(new Set([
-                      'cliverdair25@gmail.com',
-                      'cliverdair@gmail.com',
-                      'maestriasinlimites16@gmail.com',
-                      ...allowedUsers.map(u => u.email.trim().toLowerCase())
-                    ])).filter(Boolean).map((email, idx) => (
-                      <li key={idx} className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-wide">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></span>
-                        {email}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </details>
-            </div>
           </div>
         </div>
 
@@ -4729,6 +4700,35 @@ export default function App() {
                     <Sun className="w-4 h-4" /> Día (Protección)
                   </button>
                 </div>
+              </div>
+
+              {/* Whitelist de Cuentas Autorizadas (Solo adentro por seguridad) */}
+              <div className="border border-[#1E293B]/60 rounded-xl bg-black/40 overflow-hidden text-left relative z-30">
+                <details className="group">
+                  <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
+                    <span className="text-[9px] text-blue-400 font-black uppercase tracking-wider flex items-center gap-2">
+                      <Shield className="w-3.5 h-3.5" /> Whitelist de Cuentas Autorizadas
+                    </span>
+                    <span className="text-[#64748B] group-open:rotate-180 transition-transform duration-300">
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </span>
+                  </summary>
+                  <div className="p-4 pt-0 border-t border-[#1E293B]/40 max-h-36 overflow-y-auto custom-scrollbar">
+                    <ul className="space-y-1.5">
+                      {Array.from(new Set([
+                        'cliverdair25@gmail.com',
+                        'cliverdair@gmail.com',
+                        'maestriasinlimites16@gmail.com',
+                        ...allowedUsers.map(u => u.email.trim().toLowerCase())
+                      ])).filter(Boolean).map((email, idx) => (
+                        <li key={idx} className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></span>
+                          {email}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </details>
               </div>
 
               <button onClick={() => {
