@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from 'firebase/firestore';
-import { Crown, CheckSquare, Square, Target, Briefcase, Plus, Trash2, RefreshCcw, ImagePlus, Flame, ChevronRight, ChevronLeft, Medal, X, Clock, Calendar as CalendarIcon, Settings, AlertTriangle, Zap, Play, Lock, User, Mail, Users, Filter, BarChart2, Unlock, Heart, ShieldAlert, Archive, PauseCircle, Trophy, MoreVertical, CalendarX, Scissors, Activity, GripVertical, Diamond, CalendarDays, Power, Award, Rocket, Shield, Star, Gem, Hexagon, Octagon, Sparkles, ChevronDown, Crosshair, Radar, Plane, Home, TrendingUp, Dumbbell, Map, Compass, SlidersHorizontal, Search, CloudUpload, Check, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
+import { Crown, CheckSquare, Square, Target, Briefcase, Plus, Trash2, RefreshCcw, ImagePlus, Flame, ChevronRight, ChevronLeft, Medal, X, Clock, Calendar as CalendarIcon, Settings, AlertTriangle, Zap, Play, Lock, LogOut, User, Mail, Users, Filter, BarChart2, Unlock, Heart, ShieldAlert, Archive, PauseCircle, Trophy, MoreVertical, CalendarX, Scissors, Activity, GripVertical, Diamond, CalendarDays, Power, Award, Rocket, Shield, Star, Gem, Hexagon, Octagon, Sparkles, ChevronDown, Crosshair, Radar, Plane, Home, TrendingUp, Dumbbell, Map, Compass, SlidersHorizontal, Search, CloudUpload, Check, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -2013,6 +2013,9 @@ export default function App() {
     try {
       setLoginError('');
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
       const result = await signInWithPopup(auth, provider);
       const userEmail = result.user.email.toLowerCase();
       const userName = result.user.displayName || 'Socio Élite';
@@ -2087,6 +2090,21 @@ export default function App() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      if (firebaseUser && session.isLoggedIn) {
+        const authLinkRef = doc(db, 'artifacts', appId, 'users', firebaseUser.uid, 'settings', 'auth_link');
+        await setDoc(authLinkRef, { isLoggedIn: false }, { merge: true });
+      }
+      setSession({ isLoggedIn: false, role: '', email: '', name: '', uid: '' });
+      localStorage.removeItem('eliteSession');
+      await auth.signOut();
+      await signInAnonymously(auth);
+    } catch (e) {
+      console.error("Error al cerrar sesión:", e);
+    }
+  };
+
   const getVisibleDays = () => {
     if (viewScope === 'day') return [paddedMonthDays[currentDayIdx] || paddedMonthDays[0]];
     if (viewScope === 'week') return calendarWeeks[currentWeekIdx] || calendarWeeks[0];
@@ -2158,6 +2176,35 @@ export default function App() {
             <p className="text-center text-[10px] text-[#64748B] font-bold uppercase tracking-widest mt-2">
               Sistema restringido. Ingreso exclusivo mediante whitelist.
             </p>
+
+            {/* Whitelist Autorizada Desplegable */}
+            <div className="mt-4 border border-[#1E293B] rounded-xl bg-black/40 overflow-hidden text-left relative z-30">
+              <details className="group">
+                <summary className="flex items-center justify-between p-3 cursor-pointer select-none">
+                  <span className="text-[9px] text-blue-400 font-black uppercase tracking-wider flex items-center gap-2">
+                    <Shield className="w-3.5 h-3.5" /> Ver Whitelist Autorizada
+                  </span>
+                  <span className="text-[#64748B] group-open:rotate-180 transition-transform duration-300">
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </span>
+                </summary>
+                <div className="p-3 pt-0 border-t border-[#1E293B] max-h-36 overflow-y-auto custom-scrollbar">
+                  <ul className="space-y-1.5">
+                    {Array.from(new Set([
+                      'cliverdair25@gmail.com',
+                      'cliverdair@gmail.com',
+                      'maestriasinlimites16@gmail.com',
+                      ...allowedUsers.map(u => u.email.trim().toLowerCase())
+                    ])).filter(Boolean).map((email, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></span>
+                        {email}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </details>
+            </div>
           </div>
         </div>
 
@@ -2643,7 +2690,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* MOBILE RIGHT BUTTONS (Settings & Admin) */}
+          {/* MOBILE RIGHT BUTTONS (Settings & Admin & Logout) */}
           <div className="md:hidden flex flex-col items-center gap-2 z-50">
             <button
               onClick={() => { setProfileAliasInput(config.profile?.alias || ''); setShowProfileModal(true); }}
@@ -2660,6 +2707,14 @@ export default function App() {
                 <Users className="w-5 h-5" />
               </button>
             )}
+
+            <button
+              onClick={handleLogout}
+              title="Cerrar Sesión"
+              className="flex items-center justify-center p-2.5 bg-red-950/20 text-red-500 border border-red-500/30 hover:border-red-500 hover:bg-red-900/20 rounded-xl transition-all shadow-lg active:scale-95"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -2689,6 +2744,10 @@ export default function App() {
               <Users className="w-5 h-5" /> <span>VIP</span>
             </button>
           )}
+
+          <button onClick={handleLogout} className="flex items-center justify-center gap-2 bg-red-950/20 text-red-500 border border-red-500/30 hover:border-red-500 hover:bg-red-900/20 px-5 py-4 rounded-xl font-black uppercase text-xs transition-all shadow-lg active:scale-95">
+            <LogOut className="w-5 h-5" /> <span>SALIR</span>
+          </button>
         </div>
       </header>
 
