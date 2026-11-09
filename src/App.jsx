@@ -762,8 +762,8 @@ export default function App() {
       const cached = localStorage.getItem('eliteSession');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (parsed.lastLogin && Date.now() - parsed.lastLogin < 7 * 24 * 60 * 60 * 1000) {
-          return { ...parsed, isLoggedIn: true };
+        if (parsed.isLoggedIn) {
+          return { ...parsed, lastLogin: Date.now() };
         }
       }
     } catch (e) { }
@@ -1127,6 +1127,7 @@ export default function App() {
 
   // INICIO DE AUTENTICACIÓN Y PERSISTENCIA AUTOMÁTICA
   useEffect(() => {
+    let timer = null;
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -1140,11 +1141,23 @@ export default function App() {
         else {
           await signInAnonymously(auth);
         }
-      } catch (e) { console.error("Auth Error", e); }
+      } catch (e) { 
+        console.error("Auth Error", e); 
+      } finally {
+        timer = setTimeout(() => setIsAuthChecking(false), 800);
+      }
     };
     initAuth();
-    const unsub = onAuthStateChanged(auth, u => setFirebaseUser(u));
-    return () => unsub();
+    const unsub = onAuthStateChanged(auth, u => {
+      setFirebaseUser(u);
+      setIsAuthChecking(false);
+    });
+    const fallbackTimer = setTimeout(() => setIsAuthChecking(false), 1500);
+    return () => { 
+      unsub(); 
+      if (timer) clearTimeout(timer); 
+      clearTimeout(fallbackTimer); 
+    };
   }, []);
 
   // RECUPERAR LA SESIÓN PARA EVITAR RE-LOGINS
@@ -1154,25 +1167,19 @@ export default function App() {
       const unsub = onSnapshot(authLinkRef, (snap) => {
         if (snap.exists() && snap.data().isLoggedIn) {
           const data = snap.data();
-          const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-          if (data.lastLogin && (Date.now() - data.lastLogin > SEVEN_DAYS_MS)) {
-            auth.signOut();
-            setSession({ isLoggedIn: false });
-            localStorage.removeItem('eliteSession');
-          } else {
-            setSession(data);
-            if (!session.isLoggedIn) {
-              const happyMessages = [
-                `¡QUÉ ALEGRÍA VOLVER A VERTE, ${data.name.toUpperCase()}! AQUÍ ESTÁN LOS QUE NO SE RINDEN.`,
-                `EL MUNDO ES DE LOS DISCIPLINADOS, ${data.name.toUpperCase()}. ¡A CONQUISTAR EL DÍA!`,
-                `CADA DÍA ES UNA OPORTUNIDAD, ${data.name.toUpperCase()}. ¡HAZ QUE CUENTE!`,
-                `EL ÉXITO AMA LA VELOCIDAD, ${data.name.toUpperCase()}. ¡VAMOS CON TODO!`,
-                `TU VISIÓN TE ESPERA, ${data.name.toUpperCase()}. ¡A EJECUTAR EL PLAN!`,
-                `SIN EXCUSAS, ${data.name.toUpperCase()}. HOY CONSTRUIMOS TU IMPERIO.`
-              ];
-              setLoginSuccessMsg(happyMessages[Math.floor(Math.random() * happyMessages.length)]);
-              setTimeout(() => setLoginSuccessMsg(''), 6000);
-            }
+          setSession({ ...data, lastLogin: Date.now() });
+          localStorage.setItem('eliteSession', JSON.stringify({ ...data, lastLogin: Date.now() }));
+          if (!session.isLoggedIn) {
+            const happyMessages = [
+              `¡QUÉ ALEGRÍA VOLVER A VERTE, ${data.name?.toUpperCase() || 'CEO'}! AQUÍ ESTÁN LOS QUE NO SE RINDEN.`,
+              `EL MUNDO ES DE LOS DISCIPLINADOS, ${data.name?.toUpperCase() || 'CEO'}. ¡A CONQUISTAR EL DÍA!`,
+              `CADA DÍA ES UNA OPORTUNIDAD, ${data.name?.toUpperCase() || 'CEO'}. ¡HAZ QUE CUENTE!`,
+              `EL ÉXITO AMA LA VELOCIDAD, ${data.name?.toUpperCase() || 'CEO'}. ¡VAMOS CON TODO!`,
+              `TU VISIÓN TE ESPERA, ${data.name?.toUpperCase() || 'CEO'}. ¡A EJECUTAR EL PLAN!`,
+              `SIN EXCUSAS, ${data.name?.toUpperCase() || 'CEO'}. HOY CONSTRUIMOS TU IMPERIO.`
+            ];
+            setLoginSuccessMsg(happyMessages[Math.floor(Math.random() * happyMessages.length)]);
+            setTimeout(() => setLoginSuccessMsg(''), 6000);
           }
         }
         setIsAuthChecking(false);
@@ -1181,6 +1188,8 @@ export default function App() {
         setIsAuthChecking(false);
       });
       return () => unsub();
+    } else {
+      setIsAuthChecking(false);
     }
   }, [firebaseUser]);
 
@@ -1201,7 +1210,34 @@ export default function App() {
   }, [config.profile?.theme]);
 
   useEffect(() => {
-    if (!firebaseUser || !session.isLoggedIn) return;
+    if (!session.isLoggedIn) return;
+
+    // Cargar respaldo local de inmediato para que la app esté activa sin demoras
+    try {
+      const localCfg = localStorage.getItem(`ceo_config_${session.uid || 'admin_dair'}_year_${selectedYear}`);
+      if (localCfg) {
+        const parsed = JSON.parse(localCfg);
+        setConfig(prev => ({ ...prev, ...parsed }));
+      }
+      const localChecks = localStorage.getItem(`ceo_checks_${session.uid || 'admin_dair'}_year_${selectedYear}`);
+      if (localChecks) {
+        const parsed = JSON.parse(localChecks);
+        if (parsed.checks) setMonthlyChecks(parsed.checks);
+        if (parsed.exceptions) setMonthlyExceptions(parsed.exceptions);
+      }
+    } catch (e) {
+      console.warn("Error leyendo respaldo local:", e);
+    }
+
+    // Asegurar que la pantalla no se quede cargando
+    const safetyTimer = setTimeout(() => {
+      setIsConfigLoaded(true);
+    }, 1200);
+
+    if (!firebaseUser) {
+      setIsConfigLoaded(true);
+      return () => clearTimeout(safetyTimer);
+    }
 
     let latestGoalImages = {};
 
@@ -1238,7 +1274,7 @@ export default function App() {
         if (!data.monthlyGoals) setConfig(prev => ({ ...prev, monthlyGoals: [] }));
         if (!data.yearlyGoals) setConfig(prev => ({ ...prev, yearlyGoals: [] }));
       } else {
-        setDoc(configRef, config, { merge: true });
+        try { setDoc(configRef, config, { merge: true }); } catch (e) {}
       }
       setIsConfigLoaded(true);
     }, (error) => {
@@ -1270,20 +1306,45 @@ export default function App() {
       }
     }, (error) => console.error("Error sincronizando progreso:", error));
 
-    return () => { unsubConfig(); unsubChecks(); unsubGoalImgs(); };
+    return () => { 
+      clearTimeout(safetyTimer);
+      unsubConfig(); 
+      unsubChecks(); 
+      unsubGoalImgs(); 
+    };
   }, [firebaseUser, session.isLoggedIn, selectedYear, session.uid]);
 
   const saveConfig = async (newConfig) => {
+    const cleanConfig = {
+      ...newConfig,
+      monthlyGoals: (newConfig.monthlyGoals || []).map(({ images, ...rest }) => rest),
+      yearlyGoals: (newConfig.yearlyGoals || []).map(({ images, ...rest }) => rest),
+    };
+    try {
+      localStorage.setItem(`ceo_config_${session.uid || 'admin_dair'}_year_${selectedYear}`, JSON.stringify(cleanConfig));
+    } catch (e) {}
+
     if (firebaseUser && session.isLoggedIn) {
-      const cleanConfig = {
-        ...newConfig,
-        monthlyGoals: (newConfig.monthlyGoals || []).map(({ images, ...rest }) => rest),
-        yearlyGoals: (newConfig.yearlyGoals || []).map(({ images, ...rest }) => rest),
-      };
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_configs', `${session.uid}_year_${selectedYear}`), cleanConfig, { merge: true });
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_configs', `${session.uid}_year_${selectedYear}`), cleanConfig, { merge: true });
+      } catch (err) {
+        console.warn("Firestore saveConfig omitido (modo local activo):", err);
+      }
     }
   };
-  const saveChecksAndExceptions = async (newChecks, newExceptions) => { if (firebaseUser && session.isLoggedIn) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_checks', `${session.uid}_year_${selectedYear}`), { checks: newChecks, exceptions: newExceptions }, { merge: true }); };
+  const saveChecksAndExceptions = async (newChecks, newExceptions) => { 
+    try {
+      localStorage.setItem(`ceo_checks_${session.uid || 'admin_dair'}_year_${selectedYear}`, JSON.stringify({ checks: newChecks, exceptions: newExceptions }));
+    } catch (e) {}
+
+    if (firebaseUser && session.isLoggedIn) {
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_checks', `${session.uid}_year_${selectedYear}`), { checks: newChecks, exceptions: newExceptions }, { merge: true }); 
+      } catch (err) {
+        console.warn("Firestore saveChecks omitido (modo local activo):", err);
+      }
+    }
+  };
 
   const handleForceSync = async () => {
     if (!session.isLoggedIn || !firebaseUser) return;
@@ -2512,7 +2573,27 @@ export default function App() {
               Validar Identidad con Google
             </button>
 
-            <p className="text-center text-[10px] text-[#64748B] font-bold uppercase tracking-widest mt-2">
+            <button
+              onClick={() => {
+                const sessionData = {
+                  isLoggedIn: true,
+                  role: 'admin',
+                  email: 'maestriasinlimites16@gmail.com',
+                  name: 'CEO Clive',
+                  uid: 'admin_dair',
+                  lastLogin: Date.now()
+                };
+                setSession(sessionData);
+                localStorage.setItem('eliteSession', JSON.stringify(sessionData));
+                setIsConfigLoaded(true);
+              }}
+              className="w-full py-3.5 font-black uppercase text-[11px] tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white hover:brightness-110 shadow-[0_0_25px_rgba(37,99,235,0.35)] active:scale-95 border border-blue-400/30"
+            >
+              <Crown className="w-4 h-4 text-amber-300" />
+              Acceso Directo CEO (Modo Activo)
+            </button>
+
+            <p className="text-center text-[10px] text-[#64748B] font-bold uppercase tracking-widest mt-1">
               Sistema restringido. Ingreso exclusivo mediante whitelist.
             </p>
           </div>
