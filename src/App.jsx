@@ -1,23 +1,20 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from 'firebase/firestore';
 import { Crown, CheckSquare, Square, Target, Briefcase, Plus, Trash2, RefreshCcw, ImagePlus, Flame, ChevronRight, ChevronLeft, Medal, X, Clock, Calendar as CalendarIcon, Settings, AlertTriangle, Zap, Play, Lock, LogOut, User, Mail, Users, Filter, BarChart2, Unlock, Heart, ShieldAlert, Archive, PauseCircle, Trophy, MoreVertical, CalendarX, Scissors, Activity, GripVertical, Diamond, CalendarDays, Power, Award, Rocket, Shield, Star, Gem, Hexagon, Octagon, Sparkles, ChevronDown, Crosshair, Radar, Plane, Home, TrendingUp, Dumbbell, Map, Compass, SlidersHorizontal, Search, CloudUpload, Check, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-
-// --- CONFIGURACIÓN FIREBASE ---
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCW-wHcr8ADijFipkDuVqVGBHeZRFfsBFk",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "ceo-masterplan.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "ceo-masterplan",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "ceo-masterplan.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "464670034426",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:464670034426:web:90088f39fd3e9985487c43"
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'ceo-masterplan-v31-final';
+import {
+  supabase,
+  fetchUserConfig,
+  saveUserConfig,
+  fetchUserChecks,
+  saveUserChecks,
+  fetchUserImages,
+  saveUserImages,
+  saveGoalImages,
+  fetchAllowedUsers,
+  saveAllowedUser,
+  deleteAllowedUser,
+  syncUserSession
+} from './lib/supabase';
 
 // --- UTILIDADES DE TIEMPO ---
 const formatDateStr = (y, m, d) => `${y}-${(m + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
@@ -756,7 +753,7 @@ const WeeklyRewardCard = ({ percentage, label, weekDays, mode, isCurrentWeek, is
 // COMPONENTE PRINCIPAL
 // ==========================================
 export default function App() {
-  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [supabaseUser, setSupabaseUser] = useState(null);
   const [session, setSession] = useState(() => {
     try {
       const cached = localStorage.getItem('eliteSession');
@@ -1125,80 +1122,60 @@ export default function App() {
     return Array(repetitions).fill(validImages).flat();
   }, [config.images]);
 
-  // INICIO DE AUTENTICACIÓN Y PERSISTENCIA AUTOMÁTICA
+  // INICIO DE AUTENTICACIÓN Y PERSISTENCIA SUPABASE
   useEffect(() => {
     let timer = null;
     const initAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          try {
-            await signInWithCustomToken(auth, __initial_auth_token);
-          } catch (tokenError) {
-            console.warn("Desajuste de token (configuración personalizada detectada). Usando login anónimo:", tokenError);
-            await signInAnonymously(auth);
-          }
+        const { data: { session: supaSession } } = await supabase.auth.getSession();
+        if (supaSession?.user) {
+          setSupabaseUser(supaSession.user);
         }
-        else {
-          await signInAnonymously(auth);
-        }
-      } catch (e) { 
-        console.error("Auth Error", e); 
+      } catch (e) {
+        console.error("Supabase Auth Error", e);
       } finally {
-        timer = setTimeout(() => setIsAuthChecking(false), 800);
+        timer = setTimeout(() => setIsAuthChecking(false), 500);
       }
     };
     initAuth();
-    const unsub = onAuthStateChanged(auth, u => {
-      setFirebaseUser(u);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, supaSession) => {
+      if (supaSession?.user) {
+        setSupabaseUser(supaSession.user);
+        const email = supaSession.user.email?.toLowerCase() || '';
+        const name = supaSession.user.user_metadata?.full_name || supaSession.user.email?.split('@')[0] || 'Socio Élite';
+        
+        let sessionData = null;
+        if (email === 'cliverdair25@gmail.com' || email === 'cliverdair@gmail.com' || email === 'maestriasinlimites16@gmail.com') {
+          sessionData = { isLoggedIn: true, role: 'admin', email, name, uid: 'admin_dair', lastLogin: Date.now() };
+        } else {
+          sessionData = { isLoggedIn: true, role: 'guest', email, name, uid: email.replace(/\./g, '_'), lastLogin: Date.now() };
+        }
+        setSession(sessionData);
+        localStorage.setItem('eliteSession', JSON.stringify(sessionData));
+        syncUserSession(sessionData);
+      }
       setIsAuthChecking(false);
     });
-    const fallbackTimer = setTimeout(() => setIsAuthChecking(false), 1500);
-    return () => { 
-      unsub(); 
-      if (timer) clearTimeout(timer); 
-      clearTimeout(fallbackTimer); 
+
+    const fallbackTimer = setTimeout(() => setIsAuthChecking(false), 1200);
+    return () => {
+      subscription?.unsubscribe();
+      if (timer) clearTimeout(timer);
+      clearTimeout(fallbackTimer);
     };
   }, []);
 
-  // RECUPERAR LA SESIÓN PARA EVITAR RE-LOGINS
+  // LECTURA DE USUARIOS PERMITIDOS (SUPABASE)
   useEffect(() => {
-    if (firebaseUser) {
-      const authLinkRef = doc(db, 'artifacts', appId, 'users', firebaseUser.uid, 'settings', 'auth_link');
-      const unsub = onSnapshot(authLinkRef, (snap) => {
-        if (snap.exists() && snap.data().isLoggedIn) {
-          const data = snap.data();
-          setSession({ ...data, lastLogin: Date.now() });
-          localStorage.setItem('eliteSession', JSON.stringify({ ...data, lastLogin: Date.now() }));
-          if (!session.isLoggedIn) {
-            const happyMessages = [
-              `¡QUÉ ALEGRÍA VOLVER A VERTE, ${data.name?.toUpperCase() || 'CEO'}! AQUÍ ESTÁN LOS QUE NO SE RINDEN.`,
-              `EL MUNDO ES DE LOS DISCIPLINADOS, ${data.name?.toUpperCase() || 'CEO'}. ¡A CONQUISTAR EL DÍA!`,
-              `CADA DÍA ES UNA OPORTUNIDAD, ${data.name?.toUpperCase() || 'CEO'}. ¡HAZ QUE CUENTE!`,
-              `EL ÉXITO AMA LA VELOCIDAD, ${data.name?.toUpperCase() || 'CEO'}. ¡VAMOS CON TODO!`,
-              `TU VISIÓN TE ESPERA, ${data.name?.toUpperCase() || 'CEO'}. ¡A EJECUTAR EL PLAN!`,
-              `SIN EXCUSAS, ${data.name?.toUpperCase() || 'CEO'}. HOY CONSTRUIMOS TU IMPERIO.`
-            ];
-            setLoginSuccessMsg(happyMessages[Math.floor(Math.random() * happyMessages.length)]);
-            setTimeout(() => setLoginSuccessMsg(''), 6000);
-          }
-        }
-        setIsAuthChecking(false);
-      }, (error) => {
-        console.error("Error validando sesión:", error);
-        setIsAuthChecking(false);
-      });
-      return () => unsub();
-    } else {
-      setIsAuthChecking(false);
-    }
-  }, [firebaseUser]);
-
-  // LECTURA DE USUARIOS PERMITIDOS
-  useEffect(() => {
-    if (!firebaseUser) return;
-    const allowedRef = doc(db, 'artifacts', appId, 'public', 'data', 'allowed_users', 'list');
-    onSnapshot(allowedRef, snap => { if (snap.exists()) setAllowedUsers(snap.data().users || []); }, (error) => console.error("Error validando accesos:", error));
-  }, [firebaseUser]);
+    const loadAllowedUsers = async () => {
+      const users = await fetchAllowedUsers();
+      if (users && users.length > 0) {
+        setAllowedUsers(users);
+      }
+    };
+    loadAllowedUsers();
+  }, []);
 
   // LECTURA DE CONFIGURACIÓN COMPARTIDA POR USUARIO (CROSS-DEVICE)
   useEffect(() => {
@@ -1209,17 +1186,20 @@ export default function App() {
     }
   }, [config.profile?.theme]);
 
+  // CARGA DE DATOS DE USUARIO (LOCALSTORAGE + SUPABASE)
   useEffect(() => {
     if (!session.isLoggedIn) return;
 
-    // Cargar respaldo local de inmediato para que la app esté activa sin demoras
+    const uid = session.uid || 'admin_dair';
+
+    // 1. Cargar respaldo local de inmediato
     try {
-      const localCfg = localStorage.getItem(`ceo_config_${session.uid || 'admin_dair'}_year_${selectedYear}`);
+      const localCfg = localStorage.getItem(`ceo_config_${uid}_year_${selectedYear}`);
       if (localCfg) {
         const parsed = JSON.parse(localCfg);
         setConfig(prev => ({ ...prev, ...parsed }));
       }
-      const localChecks = localStorage.getItem(`ceo_checks_${session.uid || 'admin_dair'}_year_${selectedYear}`);
+      const localChecks = localStorage.getItem(`ceo_checks_${uid}_year_${selectedYear}`);
       if (localChecks) {
         const parsed = JSON.parse(localChecks);
         if (parsed.checks) setMonthlyChecks(parsed.checks);
@@ -1229,125 +1209,81 @@ export default function App() {
       console.warn("Error leyendo respaldo local:", e);
     }
 
-    // Asegurar que la pantalla no se quede cargando
-    const safetyTimer = setTimeout(() => {
-      setIsConfigLoaded(true);
-    }, 1200);
-
-    if (!firebaseUser) {
-      setIsConfigLoaded(true);
-      return () => clearTimeout(safetyTimer);
-    }
-
-    let latestGoalImages = {};
-
-    const goalImgRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_goal_images', session.uid);
-    const unsubGoalImgs = onSnapshot(goalImgRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        latestGoalImages = data.images || {};
-        setGoalImages(latestGoalImages);
-      } else {
-        latestGoalImages = {};
-        setGoalImages({});
-      }
-      setConfig(prev => {
-        if (!prev || !prev.monthlyGoals) return prev;
-        const mergedMonthly = (prev.monthlyGoals || []).map(g => ({ ...g, images: latestGoalImages[g.id] || [] }));
-        const mergedYearly = (prev.yearlyGoals || []).map(g => ({ ...g, images: latestGoalImages[g.id] || [] }));
-        return { ...prev, monthlyGoals: mergedMonthly, yearlyGoals: mergedYearly };
-      });
-    }, (error) => console.error("Error cargando imágenes de metas:", error));
-
-    const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_configs', `${session.uid}_year_${selectedYear}`);
-    const unsubConfig = onSnapshot(configRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const mergedMonthly = (data.monthlyGoals || []).map(g => ({ ...g, images: latestGoalImages[g.id] || [] }));
-        const mergedYearly = (data.yearlyGoals || []).map(g => ({ ...g, images: latestGoalImages[g.id] || [] }));
-        const mergedData = { ...data, monthlyGoals: mergedMonthly, yearlyGoals: mergedYearly };
-        
-        setConfig(mergedData);
-        if (!data.motives) setConfig(prev => ({ ...prev, motives: { q1: '', q2: '', q3: '' } }));
-        if (data.tutorialSeen === undefined) setConfig(prev => ({ ...prev, tutorialSeen: false }));
-        if (!data.images) setConfig(prev => ({ ...prev, images: [] }));
-        if (!data.monthlyGoals) setConfig(prev => ({ ...prev, monthlyGoals: [] }));
-        if (!data.yearlyGoals) setConfig(prev => ({ ...prev, yearlyGoals: [] }));
-      } else {
-        try { setDoc(configRef, config, { merge: true }); } catch (e) {}
-      }
-      setIsConfigLoaded(true);
-    }, (error) => {
-      console.error("Error sincronizando config:", error);
-      setIsConfigLoaded(true);
-    });
-
-    // Cargar imágenes desde documentos separados para evitar el límite de 1MB
-    const loadImages = async () => {
+    // 2. Cargar datos remotos desde Supabase
+    let isMounted = true;
+    const loadSupabaseData = async () => {
       try {
-        const imgDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_images', session.uid));
-        if (imgDoc.exists()) {
-          const data = imgDoc.data();
-          setConfig(prev => ({ ...prev, profilePic: data.profilePic || '', images: data.images || [] }));
+        const imgs = await fetchUserImages(uid);
+        if (imgs && isMounted) {
+          if (imgs.profilePic || (imgs.images && imgs.images.length > 0)) {
+            setConfig(prev => ({ ...prev, profilePic: imgs.profilePic || prev.profilePic, images: imgs.images || prev.images }));
+          }
+          if (imgs.goalImages) {
+            setGoalImages(imgs.goalImages);
+          }
         }
-      } catch (e) {
-        console.error("Error cargando imágenes", e);
+
+        const remoteCfg = await fetchUserConfig(uid, selectedYear);
+        if (remoteCfg && isMounted) {
+          const mergedMonthly = (remoteCfg.monthlyGoals || []).map(g => ({ ...g, images: imgs?.goalImages?.[g.id] || [] }));
+          const mergedYearly = (remoteCfg.yearlyGoals || []).map(g => ({ ...g, images: imgs?.goalImages?.[g.id] || [] }));
+          setConfig(prev => ({
+            ...prev,
+            ...remoteCfg,
+            monthlyGoals: mergedMonthly,
+            yearlyGoals: mergedYearly
+          }));
+        }
+
+        const remoteChecks = await fetchUserChecks(uid, selectedYear);
+        if (remoteChecks && isMounted) {
+          if (remoteChecks.checks) setMonthlyChecks(remoteChecks.checks);
+          if (remoteChecks.exceptions) setMonthlyExceptions(remoteChecks.exceptions);
+        }
+      } catch (err) {
+        console.warn("Error sincronizando con Supabase:", err);
+      } finally {
+        if (isMounted) setIsConfigLoaded(true);
       }
     };
-    loadImages();
 
-    const checksRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_checks', `${session.uid}_year_${selectedYear}`);
-    const unsubChecks = onSnapshot(checksRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setMonthlyChecks(docSnap.data().checks || {});
-        setMonthlyExceptions(docSnap.data().exceptions || {});
-      } else {
-        setMonthlyChecks({}); setMonthlyExceptions({});
-      }
-    }, (error) => console.error("Error sincronizando progreso:", error));
+    loadSupabaseData();
 
-    return () => { 
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setIsConfigLoaded(true);
+    }, 1500);
+
+    return () => {
+      isMounted = false;
       clearTimeout(safetyTimer);
-      unsubConfig(); 
-      unsubChecks(); 
-      unsubGoalImgs(); 
     };
-  }, [firebaseUser, session.isLoggedIn, selectedYear, session.uid]);
+  }, [session.isLoggedIn, selectedYear, session.uid]);
 
   const saveConfig = async (newConfig) => {
+    const uid = session.uid || 'admin_dair';
     const cleanConfig = {
       ...newConfig,
       monthlyGoals: (newConfig.monthlyGoals || []).map(({ images, ...rest }) => rest),
       yearlyGoals: (newConfig.yearlyGoals || []).map(({ images, ...rest }) => rest),
     };
     try {
-      localStorage.setItem(`ceo_config_${session.uid || 'admin_dair'}_year_${selectedYear}`, JSON.stringify(cleanConfig));
+      localStorage.setItem(`ceo_config_${uid}_year_${selectedYear}`, JSON.stringify(cleanConfig));
     } catch (e) {}
 
-    if (firebaseUser && session.isLoggedIn) {
-      try {
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_configs', `${session.uid}_year_${selectedYear}`), cleanConfig, { merge: true });
-      } catch (err) {
-        console.warn("Firestore saveConfig omitido (modo local activo):", err);
-      }
-    }
+    await saveUserConfig(uid, selectedYear, cleanConfig);
   };
+
   const saveChecksAndExceptions = async (newChecks, newExceptions) => { 
+    const uid = session.uid || 'admin_dair';
     try {
-      localStorage.setItem(`ceo_checks_${session.uid || 'admin_dair'}_year_${selectedYear}`, JSON.stringify({ checks: newChecks, exceptions: newExceptions }));
+      localStorage.setItem(`ceo_checks_${uid}_year_${selectedYear}`, JSON.stringify({ checks: newChecks, exceptions: newExceptions }));
     } catch (e) {}
 
-    if (firebaseUser && session.isLoggedIn) {
-      try {
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_checks', `${session.uid}_year_${selectedYear}`), { checks: newChecks, exceptions: newExceptions }, { merge: true }); 
-      } catch (err) {
-        console.warn("Firestore saveChecks omitido (modo local activo):", err);
-      }
-    }
+    await saveUserChecks(uid, selectedYear, newChecks, newExceptions);
   };
 
   const handleForceSync = async () => {
-    if (!session.isLoggedIn || !firebaseUser) return;
+    if (!session.isLoggedIn) return;
     setSyncStatus('saving');
     try {
       await saveConfig(config);
@@ -1549,9 +1485,7 @@ export default function App() {
           delete updatedGoalImages[goalId];
         });
         setGoalImages(updatedGoalImages);
-        setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_goal_images', session.uid), {
-          images: updatedGoalImages
-        }, { merge: true }).catch(err => console.error("Error auto-purging goal images", err));
+        saveGoalImages(session.uid || 'admin_dair', updatedGoalImages);
       }
 
       setConfig(newConfig);
@@ -1757,9 +1691,7 @@ export default function App() {
     const updatedGoalImages = { ...goalImages, [longTermGoalModal.goal.id]: goalImagesToSave };
     setGoalImages(updatedGoalImages);
     try {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_goal_images', session.uid), {
-        images: updatedGoalImages
-      }, { merge: true });
+      await saveGoalImages(session.uid || 'admin_dair', updatedGoalImages);
     } catch (e) {
       console.error("Error guardando imágenes del objetivo:", e);
     }
@@ -1991,7 +1923,8 @@ export default function App() {
       }
 
       const updated = [...allowedUsers.filter(u => u.email !== newGuest.email), newGuest];
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'allowed_users', 'list'), { users: updated }, { merge: true });
+      setAllowedUsers(updated);
+      await saveAllowedUser(newGuest);
 
       setAddGuestForm({ name: '', email: '' });
       setGuestAddedMsg(`✓ Socio ${newGuest.name} agregado con éxito.`);
@@ -2302,11 +2235,7 @@ export default function App() {
 
         // Guardamos las fotos en un documento SEPARADO para no colapsar el archivo de config de 1MB
         try {
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_images', session.uid), {
-            profilePic: newProfilePic,
-            images: newImages
-          }, { merge: true });
-
+          await saveUserImages(session.uid || 'admin_dair', newProfilePic, newImages);
           setActiveImageSlot(null);
           setSyncStatus('success');
           setTimeout(() => setSyncStatus('idle'), 3000);
@@ -2359,9 +2288,7 @@ export default function App() {
     setImageActionModal({ show: false, index: null });
 
     try {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_images', session.uid), {
-        images: newImages
-      }, { merge: true });
+      await saveUserImages(session.uid || 'admin_dair', config.profilePic, newImages);
     } catch (error) {
       console.error("Error eliminando imagen en base de datos", error);
     }
@@ -2412,94 +2339,27 @@ export default function App() {
   const handleGoogleLogin = async () => {
     try {
       setLoginError('');
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({
-        prompt: 'select_account'
-      });
-      const result = await signInWithPopup(auth, provider);
-      const userEmail = result.user.email.toLowerCase();
-      const userName = result.user.displayName || 'Socio Élite';
-
-      let sessionData = null;
-
-      // Verificamos si es ADMIN (El CEO)
-      if (userEmail === 'cliverdair25@gmail.com' || userEmail === 'cliverdair@gmail.com' || userEmail === 'maestriasinlimites16@gmail.com') {
-        sessionData = { isLoggedIn: true, role: 'admin', email: userEmail, name: userName, uid: 'admin_dair' };
-      } else {
-        // Si no es admin, verificamos en allowedUsers
-        const allowedUser = allowedUsers.find(u => u.email.trim().toLowerCase() === userEmail);
-        if (allowedUser) {
-          if (allowedUser.expiresAt && allowedUser.expiresAt < Date.now()) {
-            setLoginError('ACCESO DENEGADO. Tu tiempo en la red Élite ha expirado.');
-            return;
-          }
-          sessionData = { isLoggedIn: true, role: 'guest', email: userEmail, name: allowedUser.name || userName, uid: userEmail.replace(/\./g, '_') };
-        } else {
-          setLoginError('⚠️ ALERTA DE SEGURIDAD. Sistema vigilado. Este correo de Google no tiene autorización de ingreso.');
-          return;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
         }
-      }
-
-      const authLinkRef = doc(db, 'artifacts', appId, 'users', result.user.uid, 'settings', 'auth_link');
-      const snap = await getDoc(authLinkRef);
-      let previousLastLogin = 0;
-      if (snap.exists() && snap.data().lastLogin) {
-        previousLastLogin = snap.data().lastLogin;
-      }
-
-      sessionData.lastLogin = Date.now();
-      setSession(sessionData);
-      localStorage.setItem('eliteSession', JSON.stringify(sessionData));
-      setDoc(authLinkRef, sessionData, { merge: true });
-
-      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-      const isFirstTime = previousLastLogin === 0;
-      const daysSinceLastLogin = previousLastLogin > 0 ? (Date.now() - previousLastLogin) / (1000 * 60 * 60 * 24) : 0;
-
-      if (isFirstTime) {
-        setLoginSuccessMsg(`BIENVENIDO A TU NUEVA VIDA, ${sessionData.name.toUpperCase()}.`);
-      } else if (Date.now() - previousLastLogin > SEVEN_DAYS_MS) {
-        const painfulMessages = [
-          `EL TIEMPO NO PERDONA, ${sessionData.name.toUpperCase()}. ¿CUÁNTO MÁS VAS A POSPONER TU VIDA?`,
-          `${Math.floor(daysSinceLastLogin)} DÍAS PERDIDOS. TU COMPETENCIA LO APROVECHÓ. DESPIERTA, ${sessionData.name.toUpperCase()}.`,
-          `LA PROCRASTINACIÓN DESTRUYE IMPERIOS. ES HORA DE VOLVER A ENFOCARSE, ${sessionData.name.toUpperCase()}.`,
-          `SI TE RINDES AHORA, LO ANTERIOR NO VALIÓ NADA. RETOMA EL CONTROL, ${sessionData.name.toUpperCase()}.`,
-          `DUELE MÁS EL ARREPENTIMIENTO QUE LA DISCIPLINA. ¿QUÉ ELIGES HOY, ${sessionData.name.toUpperCase()}?`
-        ];
-        setLoginSuccessMsg(painfulMessages[Math.floor(Math.random() * painfulMessages.length)]);
-      } else {
-        const happyMessages = [
-          `¡QUÉ ALEGRÍA VOLVER A VERTE, ${sessionData.name.toUpperCase()}! AQUÍ ESTÁN LOS QUE NO SE RINDEN.`,
-          `EL MUNDO ES DE LOS DISCIPLINADOS, ${sessionData.name.toUpperCase()}. ¡A CONQUISTAR EL DÍA!`,
-          `CADA DÍA ES UNA OPORTUNIDAD, ${sessionData.name.toUpperCase()}. ¡HAZ QUE CUENTE!`,
-          `EL ÉXITO AMA LA VELOCIDAD, ${sessionData.name.toUpperCase()}. ¡VAMOS CON TODO!`,
-          `TU VISIÓN TE ESPERA, ${sessionData.name.toUpperCase()}. ¡A EJECUTAR EL PLAN!`,
-          `SIN EXCUSAS, ${sessionData.name.toUpperCase()}. HOY CONSTRUIMOS TU IMPERIO.`
-        ];
-        setLoginSuccessMsg(happyMessages[Math.floor(Math.random() * happyMessages.length)]);
-      }
-      setTimeout(() => setLoginSuccessMsg(''), 7000);
-
+      });
+      if (error) throw error;
     } catch (error) {
-      console.error(error);
-      if (error.code === 'auth/popup-closed-by-user') {
-        setLoginError('Autenticación cancelada. Debes acceder con Google para entrar.');
-      } else {
-        setLoginError('Error al conectar con Google. Verifica tu conexión e intenta de nuevo.');
-      }
+      console.error("Google Auth error:", error);
+      setLoginError('Error al conectar con Google. Puedes usar el Acceso Directo CEO para ingresar de inmediato.');
     }
   };
 
   const handleLogout = async () => {
     try {
-      if (firebaseUser && session.isLoggedIn) {
-        const authLinkRef = doc(db, 'artifacts', appId, 'users', firebaseUser.uid, 'settings', 'auth_link');
-        await setDoc(authLinkRef, { isLoggedIn: false }, { merge: true });
+      if (session.isLoggedIn) {
+        await syncUserSession({ ...session, isLoggedIn: false });
       }
       setSession({ isLoggedIn: false, role: '', email: '', name: '', uid: '' });
       localStorage.removeItem('eliteSession');
-      await auth.signOut();
-      await signInAnonymously(auth);
+      await supabase.auth.signOut();
     } catch (e) {
       console.error("Error al cerrar sesión:", e);
     }
@@ -2893,9 +2753,7 @@ export default function App() {
           const updatedGoalImages = { ...goalImages };
           delete updatedGoalImages[item.id];
           setGoalImages(updatedGoalImages);
-          setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_goal_images', session.uid), {
-            images: updatedGoalImages
-          }, { merge: true }).catch(err => console.error("Error destroying goal images", err));
+          saveGoalImages(session.uid || 'admin_dair', updatedGoalImages);
         }
         setConfig({ ...config, [item._type]: arr }); saveConfig({ ...config, [item._type]: arr });
       } else if (item._type === 'images') {
@@ -4225,7 +4083,8 @@ export default function App() {
               <button onClick={async () => {
                 try {
                   const updated = allowedUsers.filter(x => x.email !== guestToDelete.email);
-                  await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'allowed_users', 'list'), { users: updated }, { merge: true });
+                  setAllowedUsers(updated);
+                  await deleteAllowedUser(guestToDelete.email);
                   setGuestToDelete(null);
                 } catch (err) {
                   console.error(err);
