@@ -22,3 +22,29 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ==========================================
+# CIBERSEGURIDAD: PROTECCIÓN DE SECRETOS & CREDENCIALES
+# ==========================================
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+*.env
+
+# Certificados y llaves criptográficas
+*.pem
+*.key
+*.p12
+*.crt
+*.cert
+
+# Archivos de credenciales y tokens
+credentials/
+secrets/
+auth.json
+*.credentials
+*.session
+*.token
+*.cookie
+serviceAccountKey.json
