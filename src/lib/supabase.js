@@ -291,7 +291,11 @@ export async function signUpWithEmail(email, password, name) {
     });
 
     if (error) {
-      return { success: false, error: error.message };
+      let friendlyError = error.message;
+      if (error.message.includes('already registered') || error.message.includes('already exists')) {
+        friendlyError = 'Este correo ya está registrado en Supabase. Cambia a "Iniciar Sesión" para ingresar.';
+      }
+      return { success: false, error: friendlyError };
     }
 
     return { success: true, user: data.user, session: data.session };
@@ -309,7 +313,13 @@ export async function signInWithEmail(email, password) {
     });
 
     if (error) {
-      return { success: false, error: error.message };
+      let friendlyError = error.message;
+      if (error.message === 'Invalid login credentials') {
+        friendlyError = 'Credenciales no autorizadas o contraseña incorrecta en Supabase.';
+      } else if (error.message.includes('Email not confirmed')) {
+        friendlyError = 'Tu correo requiere confirmación en Supabase. Contacta al Propietario (Clive).';
+      }
+      return { success: false, error: friendlyError };
     }
 
     return { success: true, user: data.user, session: data.session };

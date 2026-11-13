@@ -2439,20 +2439,32 @@ export default function App() {
     }
 
     if (authTab === 'register') {
-      if (!authName.trim()) {
-        setAuthError('Introduce tu nombre o alias de socio táctico.');
-        return;
-      }
+      const isOwner = isUserOwner(cleanEmail);
+      const finalName = authName.trim() || cleanEmail.split('@')[0] || (isOwner ? 'Propietario Clive' : 'Socio Director');
+
       if (!passwordRequirements.allValid) {
-        setAuthError('La contraseña debe cumplir con los 8 estándares de seguridad táctica.');
+        if (!authPassword) {
+          setAuthError('Introduce una contraseña para tu cuenta.');
+        } else if (!authConfirmPassword) {
+          setAuthError('Por favor confirma tu contraseña en el campo "Confirmar Contraseña" para validar el estándar #8.');
+        } else if (authPassword !== authConfirmPassword) {
+          setAuthError('Las contraseñas no coinciden. Asegúrate de que ambas sean exactamente iguales.');
+        } else {
+          setAuthError('La contraseña debe cumplir con los 8 estándares de seguridad táctica (mínimo 8 caracteres, mayúscula, minúscula, número y símbolo).');
+        }
         return;
       }
 
       setAuthLoading(true);
       try {
-        const res = await signUpWithEmail(cleanEmail, authPassword, authName.trim());
+        const res = await signUpWithEmail(cleanEmail, authPassword, finalName);
         if (!res.success) {
-          setAuthError(res.error || 'Error al procesar el registro.');
+          if (res.error && (res.error.includes('already registered') || res.error.includes('already exists'))) {
+            setAuthError('Este correo ya está registrado en Supabase. Cambia a "Iniciar Sesión" para ingresar con tu contraseña.');
+            setAuthTab('login');
+          } else {
+            setAuthError(res.error || 'Error al procesar el registro.');
+          }
           setAuthLoading(false);
           return;
         }
@@ -2623,401 +2635,381 @@ export default function App() {
     const isRegister = authTab === 'register';
 
     return (
-      <div className="min-h-screen lg:h-screen lg:max-h-screen w-full bg-[#02040A] text-white flex flex-col lg:flex-row items-stretch justify-center relative overflow-x-hidden lg:overflow-hidden font-sans select-none selection:bg-blue-500/30 selection:text-white">
+      <div className="min-h-screen w-full bg-[#02040A] text-white flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-x-hidden font-sans select-none selection:bg-blue-500/30 selection:text-white">
         {/* Dynamic High-Tech Ambient Backdrop */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(29,78,216,0.14)_0%,_rgba(2,4,10,1)_70%)] pointer-events-none"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b08_1px,transparent_1px),linear-gradient(to_bottom,#1e293b08_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)] pointer-events-none"></div>
-        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-blue-600/10 rounded-full blur-[128px] pointer-events-none"></div>
-        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-indigo-600/10 rounded-full blur-[128px] pointer-events-none"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(29,78,216,0.18)_0%,_rgba(2,4,10,1)_80%)] pointer-events-none"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b10_1px,transparent_1px),linear-gradient(to_bottom,#1e293b10_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_85%)] pointer-events-none"></div>
+        <div className="absolute top-1/4 -left-40 w-96 h-96 bg-blue-600/15 rounded-full blur-[140px] pointer-events-none"></div>
+        <div className="absolute bottom-1/4 -right-40 w-96 h-96 bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none"></div>
 
-        {/* LEFT PANEL: HERO BRANDING, STRATEGIC VISION & ROTATING TACTICAL MOTIVATION */}
-        <div className="relative z-10 w-full lg:w-[46%] xl:w-[44%] flex flex-col justify-between p-4 sm:p-6 lg:p-7 xl:p-8 border-b lg:border-b-0 lg:border-r border-[#1E293B]/60 bg-gradient-to-b lg:bg-gradient-to-r from-transparent via-[#0A0F1D]/40 to-transparent">
-          {/* Top Branding Section */}
-          <div>
-            <div className="flex items-center gap-2.5 mb-2 lg:mb-3">
-              <SystemLogo size="small" />
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-[0.25em] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                  SISTEMA TÁCTICO V1.0 · ZERO-TRUST
-                </span>
+        {/* 1. MASTER BRAND PILLAR (CENTERED ACROSS ALL DEVICES) */}
+        <div className="relative z-10 w-full max-w-2xl flex flex-col items-center text-center mb-5 sm:mb-7 animate-in fade-in slide-in-from-top-4 duration-500">
+          {/* Logo & Security Pill */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 mb-3">
+            <div className="relative">
+              <div className="absolute -inset-1 rounded-xl bg-blue-500/30 blur-md animate-pulse"></div>
+              <div className="relative bg-[#0A0F1D] border border-blue-500/40 p-2 rounded-xl shadow-lg">
+                <SystemLogo size="small" />
               </div>
             </div>
-
-            <div className="mb-2 lg:mb-3">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white uppercase tracking-tighter leading-none mb-1">
-                CEO
-              </h1>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tighter leading-none bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(59,130,246,0.6)]">
-                MASTERPLAN
-              </h2>
-              <p className="text-[#64748B] text-[10px] sm:text-[11px] font-black uppercase tracking-[0.22em] mt-1.5">
-                Planificador Táctico & Tracker de Alto Rendimiento
-              </p>
-            </div>
-
-            <p className="hidden sm:block text-[#94A3B8] text-xs sm:text-sm leading-relaxed max-w-md font-medium">
-              Arquitectura de disciplina ejecutiva blindada por PostgreSQL en la nube de Supabase. Control estricto de acceso por autorización y multi-inquilino.
-            </p>
-          </div>
-
-          {/* Center Tactical Rotating Quotes Deck */}
-          <div className="my-2.5 lg:my-3 bg-[#0A0F1D]/80 border border-[#1E293B] rounded-2xl p-3.5 sm:p-4 backdrop-blur-md relative overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.5)] group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
-            
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.22em] text-[#94A3B8]">
-                  COMBUSTIBLE MENTAL CEO ({String(loginQuoteIdx + 1).padStart(2, '0')}/{String(loginMasterQuotes.length).padStart(2, '0')})
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setLoginQuoteIdx(prev => (prev - 1 + loginMasterQuotes.length) % loginMasterQuotes.length)}
-                  className="p-1 rounded-md text-slate-500 hover:text-white hover:bg-slate-800/60 transition-colors"
-                  title="Cita anterior"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLoginQuoteIdx(prev => (prev + 1) % loginMasterQuotes.length)}
-                  className="p-1 rounded-md text-slate-500 hover:text-white hover:bg-slate-800/60 transition-colors"
-                  title="Siguiente cita"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="min-h-[48px] sm:min-h-[56px] flex items-center">
-              <p
-                key={loginQuoteIdx}
-                className="text-white text-xs sm:text-sm font-bold uppercase tracking-wider leading-relaxed animate-in fade-in duration-500"
-              >
-                "{loginMasterQuotes[loginQuoteIdx]}"
-              </p>
-            </div>
-
-            <div className="mt-2 flex items-center justify-between pt-2 border-t border-[#1E293B]/60">
-              <div className="flex items-center gap-1">
-                {loginMasterQuotes.slice(0, 7).map((_, idx) => (
-                  <span
-                    key={idx}
-                    onClick={() => setLoginQuoteIdx(idx)}
-                    className={`h-1 rounded-full cursor-pointer transition-all ${
-                      idx === loginQuoteIdx % 7
-                        ? 'w-5 bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]'
-                        : 'w-1 bg-[#334155] hover:bg-[#64748B]'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-[8px] font-bold text-[#64748B] uppercase tracking-widest">
-                ROTACIÓN AUTOMÁTICA
-              </span>
-            </div>
-          </div>
-
-          {/* Bottom Security / Architecture Indicators */}
-          <div className="hidden sm:flex flex-wrap items-center gap-2.5 text-[9px] font-black uppercase tracking-widest text-[#64748B]">
-            <div className="flex items-center gap-1.5 bg-[#0A0F1D] border border-emerald-500/30 px-2.5 py-1 rounded-lg text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.1)]">
+            <span className="inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full bg-blue-950/60 text-blue-300 border border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-              <span>SUPABASE POSTGRESQL · ACTIVO</span>
+              SISTEMA TÁCTICO V1.0 · SUPABASE ZERO-TRUST
+            </span>
+          </div>
+
+          {/* Master Brand Titles (Centered) */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight leading-none mb-1 text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-blue-300 drop-shadow-[0_0_35px_rgba(59,130,246,0.5)]">
+            CEO MASTERPLAN
+          </h1>
+          <p className="text-[#64748B] text-[10px] sm:text-xs font-black uppercase tracking-[0.28em] mt-1.5 text-center">
+            Planificador Táctico & Tracker de Alto Rendimiento
+          </p>
+
+          {/* Motivational Tactical Quote Briefing Bar */}
+          <div className="w-full bg-[#0A0F1D]/80 border border-[#1E293B] rounded-2xl px-4 py-2.5 sm:py-3 mt-4 backdrop-blur-md shadow-lg flex items-center justify-between gap-3 text-left">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <Flame className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+              <div className="overflow-hidden">
+                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#94A3B8] leading-none mb-0.5">
+                  COMBUSTIBLE MENTAL CEO ({String(loginQuoteIdx + 1).padStart(2, '0')}/{String(loginMasterQuotes.length).padStart(2, '0')})
+                </p>
+                <p key={loginQuoteIdx} className="text-white text-xs sm:text-sm font-bold uppercase tracking-wider truncate animate-in fade-in duration-300">
+                  "{loginMasterQuotes[loginQuoteIdx]}"
+                </p>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 bg-[#0A0F1D] border border-[#1E293B] px-2.5 py-1 rounded-lg text-slate-300">
-              <ShieldCheck className="w-3 h-3 text-blue-400" />
-              <span>SEGURIDAD 8 PUNTOS · WHITELIST</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setLoginQuoteIdx(prev => (prev - 1 + loginMasterQuotes.length) % loginMasterQuotes.length)}
+                className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
+                title="Cita anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginQuoteIdx(prev => (prev + 1) % loginMasterQuotes.length)}
+                className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
+                title="Siguiente cita"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
 
-        {/* RIGHT PANEL: FULL AUTHENTICATION TERMINAL (COMPACT SINGLE-SCREEN) */}
-        <div className="relative z-10 w-full lg:w-[54%] xl:w-[56%] flex flex-col items-center justify-center p-3 sm:p-5 lg:p-6 overflow-y-auto lg:overflow-hidden">
-          <div className="w-full max-w-lg bg-[#0A0F1D]/90 backdrop-blur-2xl border border-[#1E293B] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-[0_0_50px_rgba(0,0,0,0.85)] relative">
-            
-            {/* Terminal Header & Device Indicator */}
-            <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-[#1E293B]/70">
+        {/* 2. THE EXECUTIVE AUTHENTICATION CONSOLE (SPACIOUS, IMPOSING & MAJESTIC) */}
+        <div className="relative z-10 w-full max-w-xl sm:max-w-2xl bg-[#0A0F1D]/90 backdrop-blur-3xl border border-[#1E293B] hover:border-blue-500/40 rounded-3xl p-5 sm:p-8 lg:p-10 shadow-[0_0_80px_rgba(30,58,138,0.25),0_30px_70px_rgba(0,0,0,0.95)] transition-all duration-300 animate-in zoom-in-95 duration-500">
+          
+          {/* Terminal Sub-header & Device Pill */}
+          <div className="flex items-center justify-between gap-3 mb-5 pb-3 border-b border-[#1E293B]/80">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-blue-600/10 border border-blue-500/30 rounded-xl text-blue-400">
+                <KeyRound className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
               <div>
-                <span className="text-[8px] font-black tracking-[0.2em] uppercase text-blue-400 flex items-center gap-1 mb-0.5">
-                  <KeyRound className="w-3 h-3" /> TERMINAL SEGURO
+                <span className="text-[8.5px] font-black tracking-[0.2em] uppercase text-blue-400 block leading-none mb-1">
+                  TERMINAL EJECUTIVO
                 </span>
-                <h3 className="text-base sm:text-lg font-black text-white tracking-tight uppercase leading-tight">
-                  {isRegister ? 'Registro de Nuevo Socio' : 'Acceso Autorizado'}
+                <h3 className="text-base sm:text-xl font-black text-white tracking-tight uppercase leading-none">
+                  {isRegister ? 'Registro de Nuevo Socio Élite' : 'Acceso de Socio Autorizado'}
                 </h3>
               </div>
-
-              {/* Smart Device Detection Pill */}
-              <div>
-                {isRegister ? (
-                  <span className="inline-flex items-center gap-1 text-[8px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full bg-cyan-950/60 text-cyan-300 border border-cyan-500/30">
-                    <span className="w-1 h-1 rounded-full bg-cyan-400 animate-pulse"></span>
-                    DISPOSITIVO NUEVO
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[8px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
-                    <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span>
-                    TERMINAL RECORDADO
-                  </span>
-                )}
-              </div>
             </div>
 
-            {/* Tactical Tab Switcher */}
-            <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#02040A]/90 border border-[#1E293B] rounded-xl mb-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthTab('login');
-                  setAuthError('');
-                  setAuthSuccessMsg('');
-                }}
-                className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 ${
-                  !isRegister
-                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
-                    : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/50'
-                }`}
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>INICIAR SESIÓN</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthTab('register');
-                  setAuthError('');
-                  setAuthSuccessMsg('');
-                }}
-                className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 ${
-                  isRegister
-                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
-                    : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/50'
-                }`}
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>REGISTRARSE</span>
-              </button>
-            </div>
-
-            {/* Error & Success Feedback Banners */}
-            {authError && (
-              <div className="mb-2.5 p-2.5 bg-rose-950/60 border border-rose-500/50 rounded-xl flex items-center gap-2 text-rose-300 text-[11px] font-bold leading-snug animate-in fade-in duration-300">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                <p>{authError}</p>
-              </div>
-            )}
-
-            {authSuccessMsg && (
-              <div className="mb-2.5 p-2.5 bg-emerald-950/60 border border-emerald-500/50 rounded-xl flex items-center gap-2 text-emerald-300 text-[11px] font-bold leading-snug animate-in fade-in duration-300">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <p>{authSuccessMsg}</p>
-              </div>
-            )}
-
-            {/* Main Form */}
-            <form onSubmit={handleAuthSubmit} className="space-y-2">
-              {/* Name / Alias (Registration only) */}
-              {isRegister && (
-                <div className="space-y-0.5 animate-in fade-in duration-300">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center gap-1">
-                    <User className="w-3 h-3 text-blue-400" />
-                    <span>NOMBRE O ALIAS DE SOCIO</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={authName}
-                    onChange={(e) => setAuthName(e.target.value)}
-                    placeholder="Ej. Clive / Socio Director"
-                    className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 text-white text-xs font-semibold rounded-xl px-3 py-2 outline-none transition-all placeholder:text-[#475569] shadow-inner"
-                  />
-                </div>
+            {/* Smart Device Detection */}
+            <div>
+              {isRegister ? (
+                <span className="inline-flex items-center gap-1.5 text-[8.5px] sm:text-[9px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full bg-cyan-950/70 text-cyan-300 border border-cyan-500/40 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                  DISPOSITIVO NUEVO
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-[8.5px] sm:text-[9px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full bg-emerald-950/70 text-emerald-300 border border-emerald-500/40 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  TERMINAL RECORDADO
+                </span>
               )}
+            </div>
+          </div>
 
-              {/* Email */}
-              <div className="space-y-0.5">
-                <label className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center gap-1">
-                  <Mail className="w-3 h-3 text-blue-400" />
-                  <span>CORREO ELECTRÓNICO</span>
+          {/* Tactical Tab Switcher (Large & Responsive) */}
+          <div className="grid grid-cols-2 gap-2 p-1.5 bg-[#02040A] border border-[#1E293B] rounded-2xl mb-5">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab('login');
+                setAuthError('');
+                setAuthSuccessMsg('');
+              }}
+              className={`py-3 sm:py-3.5 px-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
+                !isRegister
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-[0_0_20px_rgba(37,99,235,0.5)]'
+                  : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/40'
+              }`}
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>INICIAR SESIÓN</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab('register');
+                setAuthError('');
+                setAuthSuccessMsg('');
+              }}
+              className={`py-3 sm:py-3.5 px-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
+                isRegister
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-[0_0_20px_rgba(37,99,235,0.5)]'
+                  : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/40'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>REGISTRARSE</span>
+            </button>
+          </div>
+
+          {/* Error & Success Feedback Banners */}
+          {authError && (
+            <div className="mb-4 p-3.5 bg-rose-950/70 border border-rose-500/50 rounded-2xl flex items-center gap-3 text-rose-200 text-xs sm:text-sm font-bold leading-snug animate-in fade-in duration-300 shadow-lg">
+              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+              <p className="flex-1">{authError}</p>
+            </div>
+          )}
+
+          {authSuccessMsg && (
+            <div className="mb-4 p-3.5 bg-emerald-950/70 border border-emerald-500/50 rounded-2xl flex items-center gap-3 text-emerald-200 text-xs sm:text-sm font-bold leading-snug animate-in fade-in duration-300 shadow-lg">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <p className="flex-1">{authSuccessMsg}</p>
+            </div>
+          )}
+
+          {/* Main Executive Form */}
+          <form onSubmit={handleAuthSubmit} className="space-y-3.5 sm:space-y-4">
+            {/* Name / Alias (Registration only) */}
+            {isRegister && (
+              <div className="space-y-1 animate-in fade-in duration-300">
+                <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-blue-400" />
+                    <span>NOMBRE O ALIAS DE SOCIO</span>
+                  </span>
+                  <span className="text-[9px] text-[#64748B] normal-case">(Opcional)</span>
                 </label>
                 <input
-                  type="email"
-                  required
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="socio@ceomasterplan.com"
-                  autoComplete="email"
-                  className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 text-white text-xs font-semibold rounded-xl px-3 py-2 outline-none transition-all placeholder:text-[#475569] shadow-inner"
+                  type="text"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  placeholder="Ej. Clive / Socio Director"
+                  className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-white text-sm sm:text-base font-semibold rounded-2xl px-4 py-3 sm:py-3.5 outline-none transition-all placeholder:text-[#475569] shadow-inner"
                 />
               </div>
+            )}
 
-              {/* Password */}
-              <div className="space-y-0.5">
-                <label className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-blue-400" />
-                    <span>CONTRASEÑA</span>
+            {/* Email */}
+            <div className="space-y-1">
+              <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-blue-400" />
+                <span>CORREO ELECTRÓNICO</span>
+              </label>
+              <input
+                type="email"
+                required
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="cliverdair@gmail.com"
+                autoComplete="email"
+                className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-white text-sm sm:text-base font-semibold rounded-2xl px-4 py-3 sm:py-3.5 outline-none transition-all placeholder:text-[#475569] shadow-inner"
+              />
+            </div>
+
+            {/* Password */}
+            <div className="space-y-1">
+              <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-blue-400" />
+                  <span>CONTRASEÑA</span>
+                </span>
+                {!isRegister && (
+                  <span className="text-[9px] text-[#64748B] normal-case">
+                    Cifrada en Supabase
                   </span>
-                  {!isRegister && (
-                    <span className="text-[8px] text-[#64748B] normal-case">
-                      Cifrada por Supabase
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder={isRegister ? "Crea una contraseña táctica segura..." : "Introduce tu contraseña..."}
+                  autoComplete={isRegister ? "new-password" : "current-password"}
+                  className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-white text-sm sm:text-base font-semibold rounded-2xl px-4 py-3 sm:py-3.5 pr-12 outline-none transition-all placeholder:text-[#475569] shadow-inner"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-1"
+                  title={showPassword ? "Ocultar" : "Mostrar"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password (Registration only) */}
+            {isRegister && (
+              <div className="space-y-1 animate-in fade-in duration-300">
+                <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                    <span>CONFIRMAR CONTRASEÑA</span>
+                  </span>
+                  {authConfirmPassword && authPassword && (
+                    <span className={`text-[9px] font-bold ${authPassword === authConfirmPassword ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {authPassword === authConfirmPassword ? '✓ Coinciden' : '⚠️ No coinciden'}
                     </span>
                   )}
                 </label>
                 <div className="relative">
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showConfirmPassword ? 'text' : 'password'}
                     required
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    placeholder={isRegister ? "Crea una contraseña táctica..." : "Introduce tu contraseña..."}
-                    autoComplete={isRegister ? "new-password" : "current-password"}
-                    className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 text-white text-xs font-semibold rounded-xl px-3 py-2 pr-10 outline-none transition-all placeholder:text-[#475569] shadow-inner"
+                    value={authConfirmPassword}
+                    onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                    placeholder="Repite tu contraseña exactamente..."
+                    autoComplete="new-password"
+                    className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-white text-sm sm:text-base font-semibold rounded-2xl px-4 py-3 sm:py-3.5 pr-12 outline-none transition-all placeholder:text-[#475569] shadow-inner"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-0.5"
-                    title={showPassword ? "Ocultar" : "Mostrar"}
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-1"
+                    title={showConfirmPassword ? "Ocultar" : "Mostrar"}
                   >
-                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
+            )}
 
-              {/* Confirm Password (Registration only) */}
-              {isRegister && (
-                <div className="space-y-0.5 animate-in fade-in duration-300">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-blue-400" />
-                    <span>CONFIRMAR CONTRASEÑA</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      required
-                      value={authConfirmPassword}
-                      onChange={(e) => setAuthConfirmPassword(e.target.value)}
-                      placeholder="Repite tu contraseña exactamente..."
-                      autoComplete="new-password"
-                      className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 text-white text-xs font-semibold rounded-xl px-3 py-2 pr-10 outline-none transition-all placeholder:text-[#475569] shadow-inner"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-0.5"
-                      title={showConfirmPassword ? "Ocultar" : "Mostrar"}
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
+            {/* 8-POINT SECURITY CHECKLIST (VISIBLE ON REGISTER) */}
+            {isRegister && (
+              <div className="pt-1 animate-in fade-in duration-300">
+                <div className="bg-[#02040A]/90 border border-[#1E293B] rounded-2xl p-3.5 sm:p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-blue-400" />
+                      <span>BLINDAJE DE CONTRASEÑA ({passwordRequirements.passedCount}/8)</span>
+                    </span>
+                    <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                      passwordRequirements.allValid
+                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40'
+                        : passwordRequirements.passedCount >= 5
+                        ? 'bg-amber-950 text-amber-400 border border-amber-500/40'
+                        : 'bg-rose-950 text-rose-400 border border-rose-500/40'
+                    }`}>
+                      {passwordRequirements.allValid
+                        ? 'BLINDADO 100%'
+                        : passwordRequirements.passedCount >= 5
+                        ? 'EN PROCESO'
+                        : 'INSUFICIENTE'}
+                    </span>
                   </div>
-                </div>
-              )}
 
-              {/* 8-POINT SECURITY CHECKLIST (COMPACT ON REGISTER) */}
-              {isRegister && (
-                <div className="pt-0.5 animate-in fade-in duration-300">
-                  <div className="bg-[#02040A]/80 border border-[#1E293B] rounded-xl p-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[8.5px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3 text-blue-400" />
-                        <span>BLINDAJE ({passwordRequirements.passedCount}/8)</span>
-                      </span>
-                      <span className={`text-[7.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                  {/* Progress Bar */}
+                  <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden mb-2.5 border border-slate-800">
+                    <div
+                      className={`h-full transition-all duration-300 rounded-full ${
                         passwordRequirements.allValid
-                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40'
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(16,185,129,0.8)]'
                           : passwordRequirements.passedCount >= 5
-                          ? 'bg-amber-950 text-amber-400 border border-amber-500/40'
-                          : 'bg-rose-950 text-rose-400 border border-rose-500/40'
-                      }`}>
-                        {passwordRequirements.allValid
-                          ? 'SEGURO 100%'
-                          : passwordRequirements.passedCount >= 5
-                          ? 'EN PROCESO'
-                          : 'INSUFICIENTE'}
-                      </span>
-                    </div>
+                          ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                          : 'bg-gradient-to-r from-rose-600 to-red-500'
+                      }`}
+                      style={{ width: `${(passwordRequirements.passedCount / 8) * 100}%` }}
+                    ></div>
+                  </div>
 
-                    {/* Progress Bar */}
-                    <div className="w-full h-1 bg-slate-900 rounded-full overflow-hidden mb-1.5 border border-slate-800">
+                  {/* 8 Requirements Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {passwordRequirements.checks.map((req) => (
                       <div
-                        className={`h-full transition-all duration-300 rounded-full ${
-                          passwordRequirements.allValid
-                            ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.7)]'
-                            : passwordRequirements.passedCount >= 5
-                            ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
-                            : 'bg-gradient-to-r from-rose-600 to-red-500'
+                        key={req.id}
+                        className={`flex items-center gap-2 p-1 rounded-lg text-[9.5px] sm:text-[10.5px] font-semibold transition-all ${
+                          req.passed
+                            ? 'text-emerald-300 bg-emerald-950/20'
+                            : 'text-slate-500 bg-transparent'
                         }`}
-                        style={{ width: `${(passwordRequirements.passedCount / 8) * 100}%` }}
-                      ></div>
-                    </div>
-
-                    {/* 8 Requirements Compact Grid */}
-                    <div className="grid grid-cols-2 gap-0.5">
-                      {passwordRequirements.checks.map((req) => (
-                        <div
-                          key={req.id}
-                          className={`flex items-center gap-1 p-0.5 rounded text-[8px] font-semibold transition-all ${
-                            req.passed
-                              ? 'text-emerald-300 bg-emerald-950/20'
-                              : 'text-slate-500 bg-transparent'
-                          }`}
-                        >
-                          {req.passed ? (
-                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
-                          ) : (
-                            <XCircle className="w-2.5 h-2.5 text-slate-600 shrink-0" />
-                          )}
-                          <span className="truncate">{req.label}</span>
-                        </div>
-                      ))}
-                    </div>
+                      >
+                        {req.passed ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 drop-shadow-[0_0_4px_rgba(16,185,129,0.8)]" />
+                        ) : (
+                          <XCircle className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                        )}
+                        <span className="truncate">{req.label}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Submit Button (Wide, Imposing, Luxurious) */}
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full py-4 sm:py-4.5 mt-2 font-black uppercase text-xs sm:text-sm tracking-widest rounded-2xl transition-all duration-300 flex items-center justify-center gap-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-[0_0_25px_rgba(37,99,235,0.4)] hover:shadow-[0_0_40px_rgba(37,99,235,0.7)] hover:brightness-110 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed group border border-blue-400/40"
+            >
+              {authLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>VERIFICANDO EN SUPABASE...</span>
+                </>
+              ) : (
+                <>
+                  <Rocket className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  <span>{isRegister ? 'CREAR CUENTA ÉLITE' : 'INGRESAR AL SISTEMA'}</span>
+                </>
               )}
+            </button>
+          </form>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={authLoading}
-                className="w-full py-2.5 mt-1 font-black uppercase text-xs tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] hover:brightness-110 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed group border border-blue-400/40"
-              >
-                {authLoading ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>VERIFICANDO EN SUPABASE...</span>
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    <span>{isRegister ? 'CREAR CUENTA ÉLITE' : 'INGRESAR AL SISTEMA'}</span>
-                  </>
-                )}
-              </button>
-            </form>
+          {/* Quick Switch Link */}
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab(isRegister ? 'login' : 'register');
+                setAuthError('');
+                setAuthSuccessMsg('');
+              }}
+              className="text-xs font-bold text-[#94A3B8] hover:text-blue-400 transition-colors"
+            >
+              {isRegister
+                ? '¿Ya tienes cuenta autorizada? Inicia sesión aquí'
+                : '¿No tienes cuenta? Regístrate aquí para solicitar autorización'}
+            </button>
+          </div>
 
-            {/* Quick Switch Link */}
-            <div className="mt-2.5 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthTab(isRegister ? 'login' : 'register');
-                  setAuthError('');
-                  setAuthSuccessMsg('');
-                }}
-                className="text-[9.5px] font-bold text-[#94A3B8] hover:text-blue-400 transition-colors"
-              >
-                {isRegister
-                  ? '¿Ya tienes cuenta autorizada? Inicia sesión aquí'
-                  : '¿No tienes cuenta? Regístrate para solicitar autorización'}
-              </button>
-            </div>
+          {/* Footer inside card */}
+          <p className="text-center text-[9px] text-[#64748B] font-bold uppercase tracking-widest mt-3">
+            Arquitectura Zero-Trust · Supabase PostgreSQL Auth V1.0 · Whitelist Activa
+          </p>
+        </div>
 
-            <p className="text-center text-[8px] text-[#64748B] font-bold uppercase tracking-widest mt-2">
-              Arquitectura Zero-Trust · Supabase PostgreSQL Auth V1.0 · Whitelist Activa
-            </p>
+        {/* 3. BOTTOM ARCHITECTURE INDICATORS (CENTERED) */}
+        <div className="relative z-10 flex flex-wrap items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest text-[#64748B] mt-6">
+          <div className="flex items-center gap-2 bg-[#0A0F1D]/80 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-emerald-400 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span>SUPABASE POSTGRESQL · ACTIVO</span>
+          </div>
+          <div className="flex items-center gap-2 bg-[#0A0F1D]/80 border border-[#1E293B] px-3 py-1.5 rounded-xl text-slate-300">
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+            <span>BLINDAJE 8 PUNTOS · WHITELIST ACTIVA</span>
           </div>
         </div>
 
