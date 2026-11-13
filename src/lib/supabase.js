@@ -273,3 +273,58 @@ export async function syncUserSession(sessionData) {
     return false;
   }
 }
+
+// ==========================================
+// AUTENTICACIÓN CON EMAIL & PASSWORD
+// ==========================================
+export async function signUpWithEmail(email, password, name) {
+  try {
+    const cleanEmail = email.toLowerCase().trim();
+    const { data, error } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password,
+      options: {
+        data: {
+          full_name: name || 'Socio Élite'
+        }
+      }
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, user: data.user, session: data.session };
+  } catch (err) {
+    return { success: false, error: err.message || 'Error al registrar usuario' };
+  }
+}
+
+export async function signInWithEmail(email, password) {
+  try {
+    const cleanEmail = email.toLowerCase().trim();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, user: data.user, session: data.session };
+  } catch (err) {
+    return { success: false, error: err.message || 'Error al iniciar sesión' };
+  }
+}
+
+export async function signOutUser() {
+  try {
+    await supabase.auth.signOut();
+    return true;
+  } catch (err) {
+    console.warn('Error cerrando sesión en Supabase:', err);
+    return false;
+  }
+}
+

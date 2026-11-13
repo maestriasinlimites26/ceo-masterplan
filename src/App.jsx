@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Crown, CheckSquare, Square, Target, Briefcase, Plus, Trash2, RefreshCcw, ImagePlus, Flame, ChevronRight, ChevronLeft, Medal, X, Clock, Calendar as CalendarIcon, Settings, AlertTriangle, Zap, Play, Lock, LogOut, User, Mail, Users, Filter, BarChart2, Unlock, Heart, ShieldAlert, Archive, PauseCircle, Trophy, MoreVertical, CalendarX, Scissors, Activity, GripVertical, Diamond, CalendarDays, Power, Award, Rocket, Shield, Star, Gem, Hexagon, Octagon, Sparkles, ChevronDown, Crosshair, Radar, Plane, Home, TrendingUp, Dumbbell, Map, Compass, SlidersHorizontal, Search, CloudUpload, Check, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
+import { Crown, CheckSquare, Square, Target, Briefcase, Plus, Trash2, RefreshCcw, ImagePlus, Flame, ChevronRight, ChevronLeft, Medal, X, Clock, Calendar as CalendarIcon, Settings, AlertTriangle, Zap, Play, Lock, LogOut, User, Mail, Users, Filter, BarChart2, Unlock, Heart, ShieldAlert, Archive, PauseCircle, Trophy, MoreVertical, CalendarX, Scissors, Activity, GripVertical, Diamond, CalendarDays, Power, Award, Rocket, Shield, Star, Gem, Hexagon, Octagon, Sparkles, ChevronDown, Crosshair, Radar, Plane, Home, TrendingUp, Dumbbell, Map, Compass, SlidersHorizontal, Search, CloudUpload, Check, Moon, Sun, Maximize2, Minimize2, Eye, EyeOff, CheckCircle2, XCircle, ShieldCheck, KeyRound } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import {
   supabase,
@@ -13,7 +13,10 @@ import {
   fetchAllowedUsers,
   saveAllowedUser,
   deleteAllowedUser,
-  syncUserSession
+  syncUserSession,
+  signUpWithEmail,
+  signInWithEmail,
+  signOutUser
 } from './lib/supabase';
 
 // --- UTILIDADES DE TIEMPO ---
@@ -769,10 +772,69 @@ export default function App() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
-  const [loginMode, setLoginMode] = useState('guest');
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [loginError, setLoginError] = useState('');
+  const [authTab, setAuthTab] = useState(() => {
+    try {
+      const hasRegistered = localStorage.getItem('ceo_has_registered');
+      const cached = localStorage.getItem('eliteSession');
+      if (hasRegistered || cached) return 'login';
+    } catch (e) {}
+    return 'register';
+  });
+  const [authEmail, setAuthEmail] = useState(() => {
+    try {
+      return localStorage.getItem('ceo_remembered_email') || '';
+    } catch { return ''; }
+  });
+  const [authPassword, setAuthPassword] = useState('');
+  const [authConfirmPassword, setAuthConfirmPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [authSuccessMsg, setAuthSuccessMsg] = useState('');
+  const [loginSuccessMsg, setLoginSuccessMsg] = useState('');
   const [loginQuoteIdx, setLoginQuoteIdx] = useState(0);
+
+  useEffect(() => {
+    if (session.isLoggedIn) return;
+    const quoteInterval = setInterval(() => {
+      setLoginQuoteIdx(prev => (prev + 1) % loginMasterQuotes.length);
+    }, 6000);
+    return () => clearInterval(quoteInterval);
+  }, [session.isLoggedIn]);
+
+  const passwordRequirements = useMemo(() => {
+    const p = authPassword || '';
+    const cp = authConfirmPassword || '';
+
+    const hasMinLength = p.length >= 8;
+    const hasUpper = /[A-Z]/.test(p);
+    const hasLower = /[a-z]/.test(p);
+    const hasNumber = /[0-9]/.test(p);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~/\\`'"]/.test(p);
+    const weakSequences = ['12345678', '87654321', '123456', 'password', 'contraseña', '11111111', '00000000', 'abcdefgh', 'qwertyui'];
+    const isPredictable = weakSequences.some(seq => p.toLowerCase().includes(seq));
+    const hasNoWeakSequence = p.length > 0 && !isPredictable;
+    const hasNoSpaces = p.length > 0 && !/\s/.test(p);
+    const matchesConfirm = p.length > 0 && cp.length > 0 && p === cp;
+
+    const checks = [
+      { id: 1, label: 'Mínimo 8 caracteres', passed: hasMinLength },
+      { id: 2, label: 'Al menos una letra MAYÚSCULA (A-Z)', passed: hasUpper },
+      { id: 3, label: 'Al menos una letra minúscula (a-z)', passed: hasLower },
+      { id: 4, label: 'Al menos un dígito numérico (0-9)', passed: hasNumber },
+      { id: 5, label: 'Al menos un símbolo especial (!@#$%^&*)', passed: hasSpecial },
+      { id: 6, label: 'Sin combinaciones secuenciales débiles', passed: hasNoWeakSequence },
+      { id: 7, label: 'Sin espacios en blanco accidentales', passed: hasNoSpaces },
+      { id: 8, label: 'Confirmación de contraseña idéntica', passed: matchesConfirm },
+    ];
+
+    const passedCount = checks.filter(c => c.passed).length;
+    const allValid = passedCount === 8;
+
+    return { checks, passedCount, allValid };
+  }, [authPassword, authConfirmPassword]);
 
   const [allowedUsers, setAllowedUsers] = useState([]);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -2336,20 +2398,141 @@ export default function App() {
     else { if (selectedMonthIndex === 11) { setSelectedMonthIndex(0); setSelectedYear(y => y + 1); } else setSelectedMonthIndex(m => m + 1); }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      setLoginError('');
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) throw error;
-    } catch (error) {
-      console.error("Google Auth error:", error);
-      setLoginError('Error al conectar con Google. Puedes usar el Acceso Directo CEO para ingresar de inmediato.');
+  const handleAuthSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setAuthError('');
+    setAuthSuccessMsg('');
+
+    const cleanEmail = authEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setAuthError('Introduce un correo electrónico corporativo o personal válido.');
+      return;
     }
+
+    if (authTab === 'register') {
+      if (!authName.trim()) {
+        setAuthError('Introduce tu nombre o alias de socio táctico.');
+        return;
+      }
+      if (!passwordRequirements.allValid) {
+        setAuthError('La contraseña debe cumplir con los 8 estándares de seguridad táctica.');
+        return;
+      }
+
+      setAuthLoading(true);
+      try {
+        const res = await signUpWithEmail(cleanEmail, authPassword, authName.trim());
+        if (!res.success) {
+          setAuthError(res.error || 'Error al procesar el registro.');
+          setAuthLoading(false);
+          return;
+        }
+
+        localStorage.setItem('ceo_has_registered', 'true');
+        localStorage.setItem('ceo_remembered_email', cleanEmail);
+
+        const isAdmin = ['cliverdair25@gmail.com', 'cliverdair@gmail.com', 'maestriasinlimites16@gmail.com'].includes(cleanEmail);
+        const sessionData = {
+          isLoggedIn: true,
+          role: isAdmin ? 'admin' : 'guest',
+          email: cleanEmail,
+          name: authName.trim() || 'Socio Élite',
+          uid: res.user?.id || cleanEmail.replace(/\./g, '_'),
+          lastLogin: Date.now()
+        };
+
+        await syncUserSession(sessionData);
+        if (!isAdmin) {
+          await saveAllowedUser({
+            email: cleanEmail,
+            name: authName.trim(),
+            role: 'guest',
+            expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000)
+          });
+        }
+
+        setSession(sessionData);
+        localStorage.setItem('eliteSession', JSON.stringify(sessionData));
+        setIsConfigLoaded(true);
+        setLoginSuccessMsg(`REGISTRO EXITOSO. BIENVENIDO A LA RED ÉLITE, ${sessionData.name.toUpperCase()}.`);
+        setTimeout(() => setLoginSuccessMsg(''), 6000);
+      } catch (err) {
+        console.error(err);
+        setAuthError(err.message || 'Error en el proceso de registro.');
+      } finally {
+        setAuthLoading(false);
+      }
+    } else {
+      // INICIO DE SESIÓN
+      if (!authPassword) {
+        setAuthError('Introduce tu contraseña de acceso.');
+        return;
+      }
+
+      setAuthLoading(true);
+      try {
+        const res = await signInWithEmail(cleanEmail, authPassword);
+        if (!res.success) {
+          setAuthError(res.error || 'Credenciales no autorizadas o contraseña incorrecta.');
+          setAuthLoading(false);
+          return;
+        }
+
+        localStorage.setItem('ceo_has_registered', 'true');
+        localStorage.setItem('ceo_remembered_email', cleanEmail);
+
+        const isAdmin = ['cliverdair25@gmail.com', 'cliverdair@gmail.com', 'maestriasinlimites16@gmail.com'].includes(cleanEmail);
+        const userName = res.user?.user_metadata?.full_name || cleanEmail.split('@')[0] || 'Socio Élite';
+
+        const sessionData = {
+          isLoggedIn: true,
+          role: isAdmin ? 'admin' : 'guest',
+          email: cleanEmail,
+          name: userName,
+          uid: res.user?.id || cleanEmail.replace(/\./g, '_'),
+          lastLogin: Date.now()
+        };
+
+        await syncUserSession(sessionData);
+        setSession(sessionData);
+        localStorage.setItem('eliteSession', JSON.stringify(sessionData));
+        setIsConfigLoaded(true);
+
+        const welcomeQuotes = [
+          `¡QUÉ ALEGRÍA VOLVER A VERTE, ${sessionData.name.toUpperCase()}! AQUÍ ESTÁN LOS QUE NO SE RINDEN.`,
+          `EL MUNDO ES DE LOS DISCIPLINADOS, ${sessionData.name.toUpperCase()}. ¡A CONQUISTAR EL DÍA!`,
+          `CADA DÍA ES UNA OPORTUNIDAD, ${sessionData.name.toUpperCase()}. ¡HAZ QUE CUENTE!`,
+          `EL ÉXITO AMA LA VELOCIDAD, ${sessionData.name.toUpperCase()}. ¡VAMOS CON TODO!`,
+          `TU VISIÓN TE ESPERA, ${sessionData.name.toUpperCase()}. ¡A EJECUTAR EL PLAN!`,
+          `SIN EXCUSAS, ${sessionData.name.toUpperCase()}. HOY CONSTRUIMOS TU IMPERIO.`
+        ];
+        setLoginSuccessMsg(welcomeQuotes[Math.floor(Math.random() * welcomeQuotes.length)]);
+        setTimeout(() => setLoginSuccessMsg(''), 7000);
+      } catch (err) {
+        console.error(err);
+        setAuthError(err.message || 'Error al autenticar.');
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+  };
+
+  const handleQuickCeoAccess = () => {
+    const sessionData = {
+      isLoggedIn: true,
+      role: 'admin',
+      email: 'maestriasinlimites16@gmail.com',
+      name: 'CEO Clive',
+      uid: 'admin_dair',
+      lastLogin: Date.now()
+    };
+    setSession(sessionData);
+    localStorage.setItem('eliteSession', JSON.stringify(sessionData));
+    localStorage.setItem('ceo_has_registered', 'true');
+    syncUserSession(sessionData);
+    setIsConfigLoaded(true);
+    setLoginSuccessMsg('ACCESO MAESTRO CONCEDIDO. BIENVENIDO, COMANDANTE CLIVE.');
+    setTimeout(() => setLoginSuccessMsg(''), 6000);
   };
 
   const handleLogout = async () => {
@@ -2401,60 +2584,423 @@ export default function App() {
   }
 
   if (!session.isLoggedIn) {
+    const isRegister = authTab === 'register';
 
     return (
-      <div className="min-h-screen bg-[#02040A] flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(15,23,42,0.8)_0%,_rgba(2,4,10,1)_80%)]"></div>
+      <div className="min-h-screen w-full bg-[#02040A] text-white flex flex-col lg:flex-row items-stretch justify-center relative overflow-x-hidden font-sans select-none selection:bg-blue-500/30 selection:text-white">
+        {/* Dynamic High-Tech Ambient Backdrop */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(29,78,216,0.15)_0%,_rgba(2,4,10,1)_70%)] pointer-events-none"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b08_1px,transparent_1px),linear-gradient(to_bottom,#1e293b08_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)] pointer-events-none"></div>
+        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-blue-600/10 rounded-full blur-[128px] pointer-events-none"></div>
+        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-indigo-600/10 rounded-full blur-[128px] pointer-events-none"></div>
 
-        <div className="bg-[#0A0F1C]/80 backdrop-blur-md border border-[#1E293B] rounded-[2rem] p-10 md:p-14 w-full max-w-[440px] z-10 shadow-[0_0_50px_rgba(0,0,0,0.5)] text-center animate-in zoom-in duration-500 relative">
+        {/* LEFT PANEL: HERO BRANDING, STRATEGIC VISION & ROTATING TACTICAL MOTIVATION */}
+        <div className="relative z-10 w-full lg:w-[48%] xl:w-[45%] flex flex-col justify-between p-6 sm:p-10 lg:p-16 border-b lg:border-b-0 lg:border-r border-[#1E293B]/60 bg-gradient-to-b lg:bg-gradient-to-r from-transparent via-[#0A0F1D]/40 to-transparent">
+          {/* Top Branding Section */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <SystemLogo size="small" />
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                  SISTEMA TÁCTICO V1.0
+                </span>
+              </div>
+            </div>
 
-          <SystemLogo size="large" />
+            <div className="mb-6">
+              <h1 className="text-4xl sm:text-5xl xl:text-6xl font-black text-white uppercase tracking-tighter leading-none mb-1">
+                CEO
+              </h1>
+              <h2 className="text-4xl sm:text-5xl xl:text-6xl font-black uppercase tracking-tighter leading-none bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(59,130,246,0.6)]">
+                MASTERPLAN
+              </h2>
+              <p className="text-[#64748B] text-[11px] sm:text-xs font-black uppercase tracking-[0.25em] mt-3">
+                Planificador Táctico & Tracker de Alto Rendimiento
+              </p>
+            </div>
 
-          <h1 className="text-[32px] font-black text-white uppercase tracking-tighter leading-none mb-2">CEO</h1>
-          <h2 className="text-[32px] font-black text-blue-500 uppercase tracking-tighter leading-none premium-glow mb-2">MASTERPLAN</h2>
-          <p className="text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-8">Planificador Táctico & Tracker</p>
-
-          <div className="mb-8 min-h-[60px] flex items-center justify-center">
-            <p key={loginQuoteIdx} className="text-[#94A3B8] text-[10px] uppercase font-bold tracking-widest leading-relaxed animate-in fade-in zoom-in duration-700">
-              "{loginMasterQuotes[loginQuoteIdx]}"
+            <p className="hidden sm:block text-[#94A3B8] text-sm leading-relaxed max-w-md font-medium mb-8">
+              Arquitectura de disciplina ejecutiva blindada por PostgreSQL en la nube de Supabase. Creado para dominar métricas, tareas de alto impacto y hábitos de hierro sin margen de error.
             </p>
           </div>
 
-          <div className="flex flex-col gap-4 relative z-20">
-            {loginError && <p className="text-red-400 text-xs font-bold bg-red-900/20 p-3 rounded-lg border border-red-500/30 text-center uppercase tracking-widest">{loginError}</p>}
+          {/* Center Tactical Rotating Quotes Deck */}
+          <div className="my-6 lg:my-8 bg-[#0A0F1D]/70 border border-[#1E293B] rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-md relative overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
+            
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <Flame className="w-4 h-4 text-amber-400 animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-[#94A3B8]">
+                  COMBUSTIBLE MENTAL CEO ({String(loginQuoteIdx + 1).padStart(2, '0')}/{String(loginMasterQuotes.length).padStart(2, '0')})
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setLoginQuoteIdx(prev => (prev - 1 + loginMasterQuotes.length) % loginMasterQuotes.length)}
+                  className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800/60 transition-colors"
+                  title="Cita anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoginQuoteIdx(prev => (prev + 1) % loginMasterQuotes.length)}
+                  className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800/60 transition-colors"
+                  title="Siguiente cita"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
 
-            <button onClick={handleGoogleLogin} className="w-full py-4 mt-2 font-black uppercase text-xs tracking-widest rounded-xl transition-all duration-500 flex items-center justify-center gap-3 bg-white text-[#111] shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:bg-gray-100 hover:scale-105 active:scale-95 border border-white/50 group">
-              <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C12 5.38 12.25 12.25 12 5.38z" />
-              </svg>
-              Validar Identidad con Google
-            </button>
+            <div className="min-h-[75px] sm:min-h-[85px] flex items-center">
+              <p
+                key={loginQuoteIdx}
+                className="text-white text-xs sm:text-sm font-bold uppercase tracking-wider leading-relaxed animate-in fade-in duration-500"
+              >
+                "{loginMasterQuotes[loginQuoteIdx]}"
+              </p>
+            </div>
 
+            <div className="mt-4 flex items-center justify-between pt-3 border-t border-[#1E293B]/60">
+              <div className="flex items-center gap-1.5">
+                {loginMasterQuotes.slice(0, 7).map((_, idx) => (
+                  <span
+                    key={idx}
+                    onClick={() => setLoginQuoteIdx(idx)}
+                    className={`h-1.5 rounded-full cursor-pointer transition-all ${
+                      idx === loginQuoteIdx % 7
+                        ? 'w-6 bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]'
+                        : 'w-1.5 bg-[#334155] hover:bg-[#64748B]'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-widest">
+                ROTACIÓN AUTOMÁTICA
+              </span>
+            </div>
+          </div>
+
+          {/* Bottom Security / Architecture Indicators */}
+          <div className="hidden sm:flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-[#64748B]">
+            <div className="flex items-center gap-2 bg-[#0A0F1D] border border-emerald-500/30 px-3 py-1.5 rounded-xl text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>SUPABASE POSTGRESQL · ACTIVO</span>
+            </div>
+            <div className="flex items-center gap-2 bg-[#0A0F1D] border border-[#1E293B] px-3 py-1.5 rounded-xl text-slate-300">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+              <span>SEGURIDAD TÁCTICA 8-PUNTOS</span>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT PANEL: FULL AUTHENTICATION TERMINAL */}
+        <div className="relative z-10 w-full lg:w-[52%] xl:w-[55%] flex flex-col items-center justify-center p-4 sm:p-8 lg:p-14 overflow-y-auto">
+          <div className="w-full max-w-xl bg-[#0A0F1D]/85 backdrop-blur-2xl border border-[#1E293B] rounded-3xl p-6 sm:p-10 shadow-[0_0_60px_rgba(0,0,0,0.85)] relative">
+            
+            {/* Terminal Header & Device Indicator */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-5 border-b border-[#1E293B]/70">
+              <div>
+                <span className="text-[9px] font-black tracking-[0.25em] uppercase text-blue-400 flex items-center gap-1.5 mb-1">
+                  <KeyRound className="w-3.5 h-3.5" /> TERMINAL DE ACCESO SEGURO
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">
+                  {isRegister ? 'Registro de Nuevo Socio' : 'Identificación de Acceso'}
+                </h3>
+              </div>
+
+              {/* Smart Device Detection Pill */}
+              <div className="self-start sm:self-auto">
+                {isRegister ? (
+                  <span className="inline-flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase px-3 py-1.5 rounded-full bg-cyan-950/60 text-cyan-300 border border-cyan-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                    DISPOSITIVO NUEVO DETECTADO
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase px-3 py-1.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    TERMINAL RECORDADO
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Tactical Tab Switcher */}
+            <div className="grid grid-cols-2 gap-2 p-1.5 bg-[#02040A]/90 border border-[#1E293B] rounded-2xl mb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthTab('login');
+                  setAuthError('');
+                }}
+                className={`py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
+                  !isRegister
+                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]'
+                    : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/50'
+                }`}
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>INICIAR SESIÓN</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthTab('register');
+                  setAuthError('');
+                }}
+                className={`py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
+                  isRegister
+                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]'
+                    : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/50'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>REGISTRARSE</span>
+              </button>
+            </div>
+
+            {/* Error & Success Feedback Banners */}
+            {authError && (
+              <div className="mb-5 p-3.5 bg-rose-950/50 border border-rose-500/40 rounded-xl flex items-center gap-3 text-rose-300 text-xs font-bold leading-snug animate-in fade-in duration-300">
+                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+                <p>{authError}</p>
+              </div>
+            )}
+
+            {authSuccessMsg && (
+              <div className="mb-5 p-3.5 bg-emerald-950/50 border border-emerald-500/40 rounded-xl flex items-center gap-3 text-emerald-300 text-xs font-bold leading-snug animate-in fade-in duration-300">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <p>{authSuccessMsg}</p>
+              </div>
+            )}
+
+            {/* Main Form */}
+            <form onSubmit={handleAuthSubmit} className="space-y-4">
+              {/* Name / Alias (Registration only) */}
+              {isRegister && (
+                <div className="space-y-1.5 animate-in fade-in duration-300">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-blue-400" />
+                    <span>NOMBRE COMPLETO O ALIAS DE SOCIO</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      placeholder="Ej. Clive / Comandante Táctico"
+                      className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 text-white text-sm font-semibold rounded-xl px-4 py-3.5 outline-none transition-all placeholder:text-[#475569] shadow-inner"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-blue-400" />
+                  <span>CORREO ELECTRÓNICO (PERSONAL O CORPORATIVO)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="socio@ceomasterplan.com"
+                    autoComplete="email"
+                    className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 text-white text-sm font-semibold rounded-xl px-4 py-3.5 outline-none transition-all placeholder:text-[#475569] shadow-inner"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-blue-400" />
+                    <span>CONTRASEÑA DE ACCESO</span>
+                  </span>
+                  {!isRegister && (
+                    <span className="text-[9px] text-[#64748B] normal-case">
+                      Protegida por bcrypt & Supabase
+                    </span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder={isRegister ? "Crea una contraseña táctica..." : "Introduce tu contraseña..."}
+                    autoComplete={isRegister ? "new-password" : "current-password"}
+                    className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 text-white text-sm font-semibold rounded-xl px-4 py-3.5 pr-12 outline-none transition-all placeholder:text-[#475569] shadow-inner"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-1"
+                    title={showPassword ? "Ocultar" : "Mostrar"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password (Registration only) */}
+              {isRegister && (
+                <div className="space-y-1.5 animate-in fade-in duration-300">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                    <span>CONFIRMAR CONTRASEÑA EXACTA</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      required
+                      value={authConfirmPassword}
+                      onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                      placeholder="Repite tu contraseña táctica..."
+                      autoComplete="new-password"
+                      className="w-full bg-[#02040A] border border-[#1E293B] focus:border-blue-500 text-white text-sm font-semibold rounded-xl px-4 py-3.5 pr-12 outline-none transition-all placeholder:text-[#475569] shadow-inner"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-1"
+                      title={showConfirmPassword ? "Ocultar" : "Mostrar"}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 8-POINT SECURITY CHECKLIST (VISIBLE ON REGISTER) */}
+              {isRegister && (
+                <div className="pt-2 pb-1 animate-in fade-in duration-300">
+                  {/* Progress Header */}
+                  <div className="bg-[#02040A]/80 border border-[#1E293B] rounded-2xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-blue-400" />
+                        <span>ESTÁNDAR DE BLINDAJE ({passwordRequirements.passedCount}/8)</span>
+                      </span>
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                        passwordRequirements.allValid
+                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40'
+                          : passwordRequirements.passedCount >= 5
+                          ? 'bg-amber-950 text-amber-400 border border-amber-500/40'
+                          : 'bg-rose-950 text-rose-400 border border-rose-500/40'
+                      }`}>
+                        {passwordRequirements.allValid
+                          ? 'SEGURO 100%'
+                          : passwordRequirements.passedCount >= 5
+                          ? 'EN PROCESO'
+                          : 'INSUFICIENTE'}
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden mb-3 border border-slate-800">
+                      <div
+                        className={`h-full transition-all duration-300 rounded-full ${
+                          passwordRequirements.allValid
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_12px_rgba(16,185,129,0.7)]'
+                            : passwordRequirements.passedCount >= 5
+                            ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                            : 'bg-gradient-to-r from-rose-600 to-red-500'
+                        }`}
+                        style={{ width: `${(passwordRequirements.passedCount / 8) * 100}%` }}
+                      ></div>
+                    </div>
+
+                    {/* 8 Requirements Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {passwordRequirements.checks.map((req) => (
+                        <div
+                          key={req.id}
+                          className={`flex items-center gap-2 p-1.5 rounded-lg text-[10px] font-semibold transition-all ${
+                            req.passed
+                              ? 'text-emerald-300 bg-emerald-950/20'
+                              : 'text-slate-500 bg-transparent'
+                          }`}
+                        >
+                          {req.passed ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 drop-shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+                          ) : (
+                            <XCircle className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                          )}
+                          <span className="truncate">{req.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full py-4 mt-2 font-black uppercase text-xs sm:text-sm tracking-widest rounded-xl transition-all duration-500 flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-[0_0_30px_rgba(37,99,235,0.4)] hover:shadow-[0_0_40px_rgba(37,99,235,0.7)] hover:brightness-110 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed group border border-blue-400/40"
+              >
+                {authLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>SINCRONIZANDO CON SUPABASE...</span>
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    <span>{isRegister ? 'CREAR CUENTA ÉLITE' : 'INGRESAR AL SISTEMA'}</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Quick Switch Link */}
+            <div className="mt-5 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthTab(isRegister ? 'login' : 'register');
+                  setAuthError('');
+                }}
+                className="text-[11px] font-bold text-[#94A3B8] hover:text-blue-400 transition-colors"
+              >
+                {isRegister
+                  ? '¿Ya tienes una cuenta registrada? Inicia sesión aquí'
+                  : '¿Nuevo en el sistema o equipo diferente? Regístrate aquí'}
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="my-6 relative flex items-center justify-center">
+              <div className="w-full border-t border-[#1E293B]"></div>
+              <span className="absolute bg-[#0A0F1D] px-3 text-[9px] font-black uppercase tracking-[0.25em] text-[#64748B]">
+                ACCESO MAESTRO
+              </span>
+            </div>
+
+            {/* Acceso Directo CEO Button */}
             <button
-              onClick={() => {
-                const sessionData = {
-                  isLoggedIn: true,
-                  role: 'admin',
-                  email: 'maestriasinlimites16@gmail.com',
-                  name: 'CEO Clive',
-                  uid: 'admin_dair',
-                  lastLogin: Date.now()
-                };
-                setSession(sessionData);
-                localStorage.setItem('eliteSession', JSON.stringify(sessionData));
-                setIsConfigLoaded(true);
-              }}
-              className="w-full py-3.5 font-black uppercase text-[11px] tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white hover:brightness-110 shadow-[0_0_25px_rgba(37,99,235,0.35)] active:scale-95 border border-blue-400/30"
+              type="button"
+              onClick={handleQuickCeoAccess}
+              className="w-full py-3.5 font-black uppercase text-[11px] tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 bg-[#02040A] hover:bg-[#0B132B] text-white hover:text-amber-300 border border-amber-500/30 hover:border-amber-400/70 shadow-[0_0_20px_rgba(245,158,11,0.15)] active:scale-95 group"
             >
-              <Crown className="w-4 h-4 text-amber-300" />
-              Acceso Directo CEO (Modo Activo)
+              <Crown className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span>Acceso Directo CEO (Modo Activo)</span>
             </button>
 
-            <p className="text-center text-[10px] text-[#64748B] font-bold uppercase tracking-widest mt-1">
-              Sistema restringido. Ingreso exclusivo mediante whitelist.
+            <p className="text-center text-[9px] text-[#64748B] font-bold uppercase tracking-widest mt-4">
+              Arquitectura blindada · Supabase PostgreSQL Auth V1.0 · Whitelist Activa
             </p>
           </div>
         </div>
@@ -2835,6 +3381,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-gray-200 font-sans p-4 relative overflow-x-hidden">
+      {/* CEO WELCOME BANNER */}
+      {loginSuccessMsg && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] max-w-xl w-[92%] bg-gradient-to-r from-blue-950/95 via-indigo-950/95 to-slate-950/95 border border-blue-400/60 backdrop-blur-2xl px-6 py-4 rounded-2xl shadow-[0_10px_40px_rgba(59,130,246,0.5)] flex items-center gap-3 animate-in fade-in slide-in-from-top-6 duration-500">
+          <Crown className="w-5 h-5 text-amber-300 shrink-0 animate-bounce" />
+          <p className="text-white text-xs md:text-sm font-black uppercase tracking-wider leading-snug">{loginSuccessMsg}</p>
+        </div>
+      )}
 
       <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
       <input type="file" accept="image/*" multiple ref={goalFileInputRef} onChange={handleGoalImageUpload} className="hidden" />
